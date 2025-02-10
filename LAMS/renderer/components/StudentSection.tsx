@@ -5,9 +5,10 @@ import { AddIcon, MinusIcon } from '@chakra-ui/icons';
 interface StudentSectionProps {
   title: string;
   studentNames: string[];
+  onStudentClick: (studentName: string) => void;
 }
 
-export const StudentSection: React.FC<StudentSectionProps> = ({ title, studentNames }) => {
+export const StudentSection: React.FC<StudentSectionProps> = ({ title, studentNames, onStudentClick }) => {
   const textColor = useColorModeValue('black', 'white');
   const [students, setStudents] = useState(studentNames);
 
@@ -52,6 +53,7 @@ export const StudentSection: React.FC<StudentSectionProps> = ({ title, studentNa
             color={textColor}
             variant='ghost'
             border="1px solid"
+            onClick={() => onStudentClick(name)}
           >
             {name}
           </Button>
