@@ -23,11 +23,11 @@ export default function HomePage() {
         <title>Home - Nextron (with-chakra-ui)</title>
       </Head>
       <Container>
-        <DarkModeSwitch />
         <Tabs isFitted mt={sectionMarginTop} variant="enclosed" width="100%">
           <TabList>
             <Tab>メイン</Tab>
             <Tab>データ</Tab>
+            <Tab>管理</Tab>
           </TabList>
           <TabPanels>
             <TabPanel>
@@ -35,6 +35,9 @@ export default function HomePage() {
             </TabPanel>
             <TabPanel>
               <DataPage />
+            </TabPanel>
+            <TabPanel>
+              <div>管理画面のコンテンツ</div>
             </TabPanel>
           </TabPanels>
         </Tabs>

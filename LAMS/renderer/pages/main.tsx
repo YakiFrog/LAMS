@@ -12,6 +12,8 @@ import {
   Button,
 } from '@chakra-ui/react';
 import { StudentSection } from '../components/StudentSection';
+// supabaseのインポート
+import { supabase } from '../utils/supabase';
 
 export const MainPage = () => {
   const sectionMarginTop = 5;
