@@ -6,6 +6,7 @@ LAMS (Laboratory Attendance Management System)
 ## 機能
 - 出勤
 - 退勤
+- 出席時間の記録
 - 週あたりの研究時間の集計
 - 月あたりの研究時間の集計
 - 年あたりの研究時間の集計
