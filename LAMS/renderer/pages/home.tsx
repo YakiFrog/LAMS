@@ -1,47 +1,31 @@
-import React from 'react'
-import Head from 'next/head'
-import Image from 'next/image'
-import { Button, Link as ChakraLink } from '@chakra-ui/react'
-import { Box } from '@chakra-ui/react'
-import { Tabs, TabList, TabPanels, Tab, TabPanel } from '@chakra-ui/react'
+import React from 'react';
+import MainTab from './MainTab';
+import DataTab from './DataTab';
+import AdminTab from './AdminTab';
+import { Tabs, TabList, TabPanels, Tab, TabPanel } from '@chakra-ui/react';
 
-import { Container } from '../components/Container'
-import { DarkModeSwitch } from '../components/DarkModeSwitch'
-import { Footer } from '../components/Footer'
-import { Hero } from '../components/Hero'
-// データタブのページ
-import { DataPage } from './data'; // DataPageをインポート
-// メインタブのページ
-import MainPage from './main';
-
-const sectionMarginTop = 5;
-
-export default function HomePage() {
+const Home: React.FC = () => {
   return (
-    <React.Fragment>
-      <Head>
-        <title>Home - Nextron (with-chakra-ui)</title>
-      </Head>
-      <Container>
-        <Tabs isFitted mt={sectionMarginTop} variant="enclosed" width="100%">
-          <TabList>
-            <Tab>メイン</Tab>
-            <Tab>データ</Tab>
-            <Tab>管理</Tab>
-          </TabList>
-          <TabPanels>
-            <TabPanel>
-              <MainPage />
-            </TabPanel>
-            <TabPanel>
-              <DataPage />
-            </TabPanel>
-            <TabPanel>
-              <div>管理画面のコンテンツ</div>
-            </TabPanel>
-          </TabPanels>
-        </Tabs>
-      </Container>
-    </React.Fragment>
-  )
-}
+    <Tabs align="center" isFitted paddingX={4}>
+      <TabList>
+        <Tab>メイン</Tab>
+        <Tab>データ</Tab>
+        <Tab>管理</Tab>
+      </TabList>
+
+      <TabPanels>
+        <TabPanel border="1px solid">
+          <MainTab />
+        </TabPanel>
+        <TabPanel border="1px solid">
+          <DataTab />
+        </TabPanel>
+        <TabPanel border="1px solid">
+          <AdminTab />
+        </TabPanel>
+      </TabPanels>
+    </Tabs>
+  );
+};
+
+export default Home;
