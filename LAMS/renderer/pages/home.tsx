@@ -14,13 +14,13 @@ const Home: React.FC = () => {
       </TabList>
 
       <TabPanels>
-        <TabPanel border="1px solid">
+        <TabPanel border="1px solid" borderRadius="md" marginTop={2}>
           <MainTab />
         </TabPanel>
-        <TabPanel border="1px solid">
+        <TabPanel border="1px solid" borderRadius="md" marginTop={2}>
           <DataTab />
         </TabPanel>
-        <TabPanel border="1px solid">
+        <TabPanel border="1px solid" borderRadius="md" marginTop={2}>
           <AdminTab />
         </TabPanel>
       </TabPanels>

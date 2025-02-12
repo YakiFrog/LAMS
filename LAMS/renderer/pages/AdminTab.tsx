@@ -261,13 +261,13 @@ const AdminTab: React.FC = () => {
       </form>
 
       <Heading size="md" mb={2} mt={6}>
-        Add New Student
+        学生を追加
       </Heading>
       <form onSubmit={handleAddStudent}>
         <FormControl mb={4}>
-          <FormLabel>Grade:</FormLabel>
+          <FormLabel>学年:</FormLabel>
           <Select
-            placeholder="Select grade"
+            placeholder="学年を選択"
             value={newGrade}
             onChange={(e) => setNewGrade(e.target.value)}
           >
@@ -278,7 +278,7 @@ const AdminTab: React.FC = () => {
         </FormControl>
 
         <FormControl mb={4}>
-          <FormLabel>Name:</FormLabel>
+          <FormLabel>名前:</FormLabel>
           <Input
             type="text"
             value={newName}
@@ -287,17 +287,17 @@ const AdminTab: React.FC = () => {
         </FormControl>
 
         <Button colorScheme="teal" type="submit">
-          Add Student
+          追加
         </Button>
       </form>
 
       <Heading size="md" mb={2} mt={6}>
-        Delete Specific Student
+        指定した学生を削除
       </Heading>
       <FormControl mb={4}>
-        <FormLabel>Grade:</FormLabel>
+        <FormLabel>学年:</FormLabel>
         <Select
-          placeholder="Select grade"
+          placeholder="学年を選択"
           value={deleteGrade}
           onChange={(e) => {
             setDeleteGrade(e.target.value);
@@ -311,9 +311,9 @@ const AdminTab: React.FC = () => {
       </FormControl>
 
       <FormControl mb={4}>
-        <FormLabel>Student:</FormLabel>
+        <FormLabel>学生:</FormLabel>
         <Select
-          placeholder="Select student"
+          placeholder="学生を選択"
           value={selectedStudentId}
           onChange={(e) => setSelectedStudentId(e.target.value)}
         >
@@ -326,15 +326,17 @@ const AdminTab: React.FC = () => {
       </FormControl>
 
       <Button colorScheme="red" onClick={handleDeleteStudent}>
-        Delete Student
+        削除
       </Button>
 
-      <Heading size="md" mb={2} mt={6}>
-        Delete All Students
-      </Heading>
-      <Button colorScheme="red" onClick={handleDeleteAllStudents} mb={4}>
-        Delete All Students
-      </Button>
+      <Box display="flex" alignItems="center" mt={6} mb={4}>
+        <Heading size="md" mr={2} pr={5}>
+          全学生を削除
+        </Heading>
+        <Button colorScheme="red" onClick={handleDeleteAllStudents}>
+          削除
+        </Button>
+      </Box>
     </Box>
   );
 };
