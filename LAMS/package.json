@@ -1,9 +1,9 @@
 {
   "private": true,
-  "name": "my-nextron-app",
-  "description": "My application description",
+  "name": "LAMS",
+  "description": "Laboratory Attendance Management System",
   "version": "1.0.0",
-  "author": "Ketan Patel <ktan.p.patel@gmail.com>",
+  "author": "Ryota Kotani <ryota.2297@gmail.com>",
   "main": "app/background.js",
   "scripts": {
     "dev": "nextron",

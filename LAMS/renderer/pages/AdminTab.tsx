@@ -231,10 +231,10 @@ const AdminTab: React.FC = () => {
 
   return (
     <Box textAlign="left" p={4}>
-      <Heading as="h2" size="lg" mb={4}>
+      {/* <Heading as="h2" size="lg" mb={4}>
         管理タブ
       </Heading>
-      <Text mb={4}>URL, KEY, 学生の追加・削除を行います。</Text>
+      <Text mb={4}>URL, KEY, 学生の追加・削除を行います。</Text> */}
 
       <form onSubmit={handleSubmit}>
         <FormControl mb={4}>
