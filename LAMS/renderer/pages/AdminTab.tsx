@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Heading,
@@ -23,7 +23,29 @@ const AdminTab: React.FC = () => {
   const [newGrade, setNewGrade] = useState('');
   const [deleteGrade, setDeleteGrade] = useState('');
   const [deleteName, setDeleteName] = useState('');
+  const [studentList, setStudentList] = useState<any[]>([]);
+  const [selectedStudentId, setSelectedStudentId] = useState<string>('');
   const toast = useToast();
+
+  useEffect(() => {
+    const fetchStudentsByGrade = async () => {
+      if (deleteGrade && supabaseUrl && supabaseAnonKey) {
+        const supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
+        const { data, error } = await supabaseClient
+          .from('students')
+          .select('*')
+          .eq('grade', deleteGrade);
+
+        if (error) {
+          console.error('Error fetching students:', error);
+        } else {
+          setStudentList(data || []);
+        }
+      }
+    };
+
+    fetchStudentsByGrade();
+  }, [deleteGrade]);
 
   const handleSubmit = (e: any) => {
     e.preventDefault();
@@ -144,12 +166,10 @@ const AdminTab: React.FC = () => {
       return;
     }
 
-    const supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
-
-    if (!deleteGrade || !deleteName) {
+    if (!deleteGrade || !selectedStudentId) {
       toast({
         title: 'Error',
-        description: 'Please specify both grade and name to delete.',
+        description: 'Please select both grade and student.',
         status: 'error',
         duration: 5000,
         isClosable: true,
@@ -157,45 +177,16 @@ const AdminTab: React.FC = () => {
       return;
     }
 
-    if (window.confirm(`Are you sure you want to delete ${deleteName} from ${deleteGrade}?`)) {
+    const selectedStudent = studentList.find(student => student.id === selectedStudentId);
+
+    if (window.confirm(`Are you sure you want to delete ${selectedStudent.name} from ${deleteGrade}?`)) {
       const supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
 
-      // service_roleを使用してidを取得
-      const { data: studentsData, error: selectError } = await supabaseClient
-        .from('students')
-        .select('id')
-        .eq('name', deleteName)
-        .eq('grade', deleteGrade);
-
-      if (selectError) {
-        console.error('Error selecting student:', selectError);
-        toast({
-          title: 'Error',
-          description: selectError.message,
-          status: 'error',
-          duration: 5000,
-          isClosable: true,
-        });
-        return;
-      }
-
-      if (!studentsData || studentsData.length === 0) {
-        toast({
-          title: 'Error',
-          description: 'No student found with the specified name and grade.',
-          status: 'error',
-          duration: 5000,
-          isClosable: true,
-        });
-        return;
-      }
-
-      const studentId = studentsData[0].id;
-
+      // 出席記録の削除
       const { error: deleteAttendanceError } = await supabaseClient
         .from('attendance')
         .delete()
-        .eq('student_id', studentId);
+        .eq('student_id', selectedStudentId);
 
       if (deleteAttendanceError) {
         console.error('Error deleting attendance records:', deleteAttendanceError);
@@ -209,12 +200,11 @@ const AdminTab: React.FC = () => {
         return;
       }
 
-      // studentsテーブルからレコードを削除
+      // 学生の削除
       const { error } = await supabaseClient
         .from('students')
         .delete()
-        .eq('name', deleteName)
-        .eq('grade', deleteGrade);
+        .eq('id', selectedStudentId);
 
       if (error) {
         console.error('Error deleting student:', error);
@@ -226,6 +216,8 @@ const AdminTab: React.FC = () => {
           isClosable: true,
         });
       } else {
+        setSelectedStudentId('');
+        setStudentList(prevList => prevList.filter(student => student.id !== selectedStudentId));
         toast({
           title: 'Success',
           description: 'Student deleted successfully!',
@@ -307,7 +299,10 @@ const AdminTab: React.FC = () => {
         <Select
           placeholder="Select grade"
           value={deleteGrade}
-          onChange={(e) => setDeleteGrade(e.target.value)}
+          onChange={(e) => {
+            setDeleteGrade(e.target.value);
+            setSelectedStudentId('');
+          }}
         >
           <option value="B4">B4</option>
           <option value="M1">M1</option>
@@ -316,12 +311,18 @@ const AdminTab: React.FC = () => {
       </FormControl>
 
       <FormControl mb={4}>
-        <FormLabel>Name:</FormLabel>
-        <Input
-          type="text"
-          value={deleteName}
-          onChange={(e) => setDeleteName(e.target.value)}
-        />
+        <FormLabel>Student:</FormLabel>
+        <Select
+          placeholder="Select student"
+          value={selectedStudentId}
+          onChange={(e) => setSelectedStudentId(e.target.value)}
+        >
+          {studentList.map((student) => (
+            <option key={student.id} value={student.id}>
+              {student.name}
+            </option>
+          ))}
+        </Select>
       </FormControl>
 
       <Button colorScheme="red" onClick={handleDeleteStudent}>
