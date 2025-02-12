@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Heading, Text, Select, FormControl, FormLabel } from '@chakra-ui/react';
+import { Box, Heading, Text, Select, FormControl, FormLabel, Grid, GridItem } from '@chakra-ui/react';
 import { createClient } from '@supabase/supabase-js';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 interface AttendanceRecord {
   id: string;
@@ -244,103 +244,115 @@ const DataTab: React.FC = () => {
       </FormControl>
 
       {selectedStudentId && (
-        <>
-          <Heading as="h3" size="md" mt={4}>
-            週ごとの出勤時間
-          </Heading>
-          {weeklyData.length > 0 ? (
-            <BarChart width={700} height={300} data={weeklyData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="day" />
-              <YAxis tickFormatter={(value: number) => {
-                  if (value >= 1) {
+        <Grid templateColumns="repeat(auto-fit, minmax(400px, 1fr))" gap={10}>
+          <GridItem>
+            <Heading as="h3" size="md" mt={4}>
+              週ごとの出勤時間
+            </Heading>
+            {weeklyData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={weeklyData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="day" />
+                  <YAxis tickFormatter={(value: number) => {
+                    if (value >= 1) {
                       return `${value.toFixed(0)} 時間`;
-                  } else if (value * 60 >= 1) {
+                    } else if (value * 60 >= 1) {
                       return `${(value * 60).toFixed(0)} 分`;
-                  } else {
+                    } else {
                       return `${(value * 60 * 60).toFixed(0)} 秒`;
-                  }
-              }}/>
-              <Tooltip formatter={(value: number) => {
-                  if (value >= 1) {
+                    }
+                  }} />
+                  <Tooltip formatter={(value: number) => {
+                    if (value >= 1) {
                       return `${value.toFixed(2)} 時間`;
-                  } else if (value * 60 >= 1) {
+                    } else if (value * 60 >= 1) {
                       return `${(value * 60).toFixed(2)} 分`;
-                  } else {
+                    } else {
                       return `${(value * 60 * 60).toFixed(2)} 秒`;
-                  }
-              }}/>
-              <Legend />
-              <Bar dataKey="出勤時間" fill="#8884d8" />
-            </BarChart>
-          ) : (
-            <Text>No weekly data available.</Text>
-          )}
+                    }
+                  }} />
+                  <Legend />
+                  <Bar dataKey="出勤時間" fill="#8884d8" />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <Text>No weekly data available.</Text>
+            )}
+          </GridItem>
 
-          <Heading as="h3" size="md" mt={4}>
-            月ごとの出勤時間
-          </Heading>
-          {monthlyData.length > 0 ? (
-            <BarChart width={700} height={300} data={monthlyData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="day" />
-              <YAxis tickFormatter={(value: number) => {
-                  if (value >= 1) {
+          <GridItem>
+            <Heading as="h3" size="md" mt={4}>
+              月ごとの出勤時間
+            </Heading>
+            {monthlyData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={monthlyData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="day" />
+                  <YAxis tickFormatter={(value: number) => {
+                    if (value >= 1) {
                       return `${value.toFixed(0)} 時間`;
-                  } else if (value * 60 >= 1) {
+                    } else if (value * 60 >= 1) {
                       return `${(value * 60).toFixed(0)} 分`;
-                  } else {
+                    } else {
                       return `${(value * 60 * 60).toFixed(0)} 秒`;
-                  }
-              }}/>
-              <Tooltip formatter={(value: number) => {
-                  if (value >= 1) {
+                    }
+                  }} />
+                  <Tooltip formatter={(value: number) => {
+                    if (value >= 1) {
                       return `${value.toFixed(2)} 時間`;
-                  } else if (value * 60 >= 1) {
+                    } else if (value * 60 >= 1) {
                       return `${(value * 60).toFixed(2)} 分`;
-                  } else {
+                    } else {
                       return `${(value * 60 * 60).toFixed(2)} 秒`;
-                  }
-              }}/>
-              <Legend />
-              <Bar dataKey="出勤時間" fill="#8884d8" />
-            </BarChart>
-          ) : (
-            <Text>No monthly data available.</Text>
-          )}
+                    }
+                  }} />
+                  <Legend />
+                  <Bar dataKey="出勤時間" fill="#8884d8" />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <Text>No monthly data available.</Text>
+            )}
+          </GridItem>
 
-          <Heading as="h3" size="md" mt={4}>
-            年ごとの出勤時間
-          </Heading>
-          {yearlyData.length > 0 ? (
-            <BarChart width={700} height={300} data={yearlyData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" />
-              <YAxis tickFormatter={(value: number) => {
-                  if (value >= 1) {
+          <GridItem>
+            <Heading as="h3" size="md" mt={4}>
+              年ごとの出勤時間
+            </Heading>
+            {yearlyData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={yearlyData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis tickFormatter={(value: number) => {
+                    if (value >= 1) {
                       return `${value.toFixed(0)} 時間`;
-                  } else if (value * 60 >= 1) {
+                    } else if (value * 60 >= 1) {
                       return `${(value * 60).toFixed(0)} 分`;
-                  } else {
+                    } else {
                       return `${(value * 60 * 60).toFixed(0)} 秒`;
-                  }
-              }}/>
-              <Tooltip formatter={(value: number) => {
-                  if (value >= 1) {
+                    }
+                  }} />
+                  <Tooltip formatter={(value: number) => {
+                    if (value >= 1) {
                       return `${value.toFixed(2)} 時間`;
-                  } else if (value * 60 >= 1) {
+                    } else if (value * 60 >= 1) {
                       return `${(value * 60).toFixed(2)} 分`;
-                  } else {
+                    } else {
                       return `${(value * 60 * 60).toFixed(2)} 秒`;
-                  }
-              }}/>
-              <Legend />
-              <Bar dataKey="出勤時間" fill="#8884d8" />
-            </BarChart>
-          ) : (
-            <Text>No yearly data available.</Text>
-          )}
-        </>
+                    }
+                  }} />
+                  <Legend />
+                  <Bar dataKey="出勤時間" fill="#8884d8" />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <Text>No yearly data available.</Text>
+            )}
+          </GridItem>
+        </Grid>
       )}
     </Box>
   );
