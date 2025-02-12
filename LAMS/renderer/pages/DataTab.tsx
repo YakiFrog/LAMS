@@ -99,7 +99,7 @@ const DataTab: React.FC = () => {
           }
         });
 
-        return { week, 出勤時間: typeof totalWorkTime === 'number' ? formatTime(totalWorkTime) : '0 時間' };
+        return { week, 出勤時間: totalWorkTime };
       });
 
       setWeeklyData(weeklyArray);
@@ -137,7 +137,7 @@ const DataTab: React.FC = () => {
           }
         });
 
-        return { month, 出勤時間: typeof totalWorkTime === 'number' ? formatTime(totalWorkTime) : '0 時間' };
+        return { month, 出勤時間: totalWorkTime };
       });
 
       setMonthlyData(monthlyArray);
@@ -175,7 +175,7 @@ const DataTab: React.FC = () => {
           }
         });
 
-        return { year, 出勤時間: typeof totalWorkTime === 'number' ? formatTime(totalWorkTime) : '0 時間' };
+        return { year, 出勤時間: totalWorkTime };
       });
 
       setYearlyData(yearlyArray);
@@ -195,17 +195,6 @@ const DataTab: React.FC = () => {
     d.setUTCDate(d.getUTCDate() + 4 - dayNum);
     const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
     return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
-  };
-
-  // Function to format time
-  const formatTime = (hours: number) => {
-    if (hours >= 1) {
-      return `${hours.toFixed(2)} 時間`;
-    } else if (hours * 60 >= 1) {
-      return `${(hours * 60).toFixed(2)} 分`;
-    } else {
-      return `${(hours * 60 * 60).toFixed(2)} 秒`;
-    }
   };
 
   return (
@@ -237,29 +226,23 @@ const DataTab: React.FC = () => {
             <BarChart width={700} height={300} data={weeklyData}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="week" />
-              <YAxis tickFormatter={(value) => {
-                  if (typeof value === 'number') {
-                      if (value >= 1) {
-                          return `${value.toFixed(0)} 時間`;
-                      } else if (value * 60 >= 1) {
-                          return `${(value * 60).toFixed(0)} 分`;
-                      } else {
-                          return `${(value * 60 * 60).toFixed(0)} 秒`;
-                      }
+              <YAxis tickFormatter={(value: number) => {
+                  if (value >= 1) {
+                      return `${value.toFixed(0)} 時間`;
+                  } else if (value * 60 >= 1) {
+                      return `${(value * 60).toFixed(0)} 分`;
+                  } else {
+                      return `${(value * 60 * 60).toFixed(0)} 秒`;
                   }
-                  return value;
               }}/>
-              <Tooltip formatter={(value) => {
-                  if (typeof value === 'number') {
-                      if (value >= 1) {
-                          return `${value.toFixed(2)} 時間`;
-                      } else if (value * 60 >= 1) {
-                          return `${(value * 60).toFixed(2)} 分`;
-                      } else {
-                          return `${(value * 60 * 60).toFixed(2)} 秒`;
-                      }
+              <Tooltip formatter={(value: number) => {
+                  if (value >= 1) {
+                      return `${value.toFixed(2)} 時間`;
+                  } else if (value * 60 >= 1) {
+                      return `${(value * 60).toFixed(2)} 分`;
+                  } else {
+                      return `${(value * 60 * 60).toFixed(2)} 秒`;
                   }
-                  return value;
               }}/>
               <Legend />
               <Bar dataKey="出勤時間" fill="#8884d8" />
@@ -275,29 +258,23 @@ const DataTab: React.FC = () => {
             <BarChart width={700} height={300} data={monthlyData}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="month" />
-              <YAxis tickFormatter={(value) => {
-                  if (typeof value === 'number') {
-                      if (value >= 1) {
-                          return `${value.toFixed(0)} 時間`;
-                      } else if (value * 60 >= 1) {
-                          return `${(value * 60).toFixed(0)} 分`;
-                      } else {
-                          return `${(value * 60 * 60).toFixed(0)} 秒`;
-                      }
+              <YAxis tickFormatter={(value: number) => {
+                  if (value >= 1) {
+                      return `${value.toFixed(0)} 時間`;
+                  } else if (value * 60 >= 1) {
+                      return `${(value * 60).toFixed(0)} 分`;
+                  } else {
+                      return `${(value * 60 * 60).toFixed(0)} 秒`;
                   }
-                  return value;
               }}/>
-              <Tooltip formatter={(value) => {
-                  if (typeof value === 'number') {
-                      if (value >= 1) {
-                          return `${value.toFixed(2)} 時間`;
-                      } else if (value * 60 >= 1) {
-                          return `${(value * 60).toFixed(2)} 分`;
-                      } else {
-                          return `${(value * 60 * 60).toFixed(2)} 秒`;
-                      }
+              <Tooltip formatter={(value: number) => {
+                  if (value >= 1) {
+                      return `${value.toFixed(2)} 時間`;
+                  } else if (value * 60 >= 1) {
+                      return `${(value * 60).toFixed(2)} 分`;
+                  } else {
+                      return `${(value * 60 * 60).toFixed(2)} 秒`;
                   }
-                  return value;
               }}/>
               <Legend />
               <Bar dataKey="出勤時間" fill="#8884d8" />
@@ -313,29 +290,23 @@ const DataTab: React.FC = () => {
             <BarChart width={700} height={300} data={yearlyData}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="year" />
-              <YAxis tickFormatter={(value) => {
-                  if (typeof value === 'number') {
-                      if (value >= 1) {
-                          return `${value.toFixed(0)} 時間`;
-                      } else if (value * 60 >= 1) {
-                          return `${(value * 60).toFixed(0)} 分`;
-                      } else {
-                          return `${(value * 60 * 60).toFixed(0)} 秒`;
-                      }
+              <YAxis tickFormatter={(value: number) => {
+                  if (value >= 1) {
+                      return `${value.toFixed(0)} 時間`;
+                  } else if (value * 60 >= 1) {
+                      return `${(value * 60).toFixed(0)} 分`;
+                  } else {
+                      return `${(value * 60 * 60).toFixed(0)} 秒`;
                   }
-                  return value;
               }}/>
-              <Tooltip formatter={(value) => {
-                  if (typeof value === 'number') {
-                      if (value >= 1) {
-                          return `${value.toFixed(2)} 時間`;
-                      } else if (value * 60 >= 1) {
-                          return `${(value * 60).toFixed(2)} 分`;
-                      } else {
-                          return `${(value * 60 * 60).toFixed(2)} 秒`;
-                      }
+              <Tooltip formatter={(value: number) => {
+                  if (value >= 1) {
+                      return `${value.toFixed(2)} 時間`;
+                  } else if (value * 60 >= 1) {
+                      return `${(value * 60).toFixed(2)} 分`;
+                  } else {
+                      return `${(value * 60 * 60).toFixed(2)} 秒`;
                   }
-                  return value;
               }}/>
               <Legend />
               <Bar dataKey="出勤時間" fill="#8884d8" />
