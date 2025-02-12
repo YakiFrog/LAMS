@@ -69,37 +69,45 @@ const DataTab: React.FC = () => {
   useEffect(() => {
     // Process weekly data
     const processWeeklyData = () => {
-      const weekly: { [week: string]: { 出勤時間: number } } = {};
+      const weekly: { [week: string]: { [day: string]: number } } = {};
+      const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
 
       attendanceData.forEach((record) => {
         const date = new Date(record.timestamp);
         const week = `${date.getFullYear()}-W${getWeek(date)}`;
+        const day = dayNames[date.getDay()];
 
         if (!weekly[week]) {
-          weekly[week] = { 出勤時間: 0 };
+          weekly[week] = {};
+        }
+
+        if (!weekly[week][day]) {
+          weekly[week][day] = 0;
         }
       });
 
-      const weeklyArray = Object.entries(weekly).map(([week, data]) => {
-        let totalWorkTime = 0;
+      const weeklyArray = Object.entries(weekly).flatMap(([week, weekData]) => {
         let lastCheckInTime: Date | null = null;
+        const dayWorkTime: { [day: string]: number } = {};
+        dayNames.forEach(day => dayWorkTime[day] = 0);
 
         attendanceData.forEach((record) => {
           const recordDate = new Date(record.timestamp);
           const recordWeek = `${recordDate.getFullYear()}-W${getWeek(recordDate)}`;
+          const recordDay = dayNames[recordDate.getDay()];
 
           if (week === recordWeek) {
             if (record.status === '出勤') {
               lastCheckInTime = recordDate;
             } else if (record.status === '退勤' && lastCheckInTime) {
               const timeDiff = recordDate.getTime() - lastCheckInTime.getTime();
-              totalWorkTime += timeDiff / (60 * 60 * 1000); // Convert milliseconds to hours
+              dayWorkTime[recordDay] += timeDiff / (60 * 60 * 1000); // Convert milliseconds to hours
               lastCheckInTime = null;
             }
           }
         });
 
-        return { week, 出勤時間: totalWorkTime };
+        return Object.entries(dayWorkTime).map(([day, 出勤時間]) => ({ day, 出勤時間 }));
       });
 
       setWeeklyData(weeklyArray);
@@ -107,37 +115,46 @@ const DataTab: React.FC = () => {
 
     // Process monthly data
     const processMonthlyData = () => {
-      const monthly: { [month: string]: { 出勤時間: number } } = {};
+      const monthly: { [month: string]: { [day: number]: number } } = {};
 
       attendanceData.forEach((record) => {
         const date = new Date(record.timestamp);
         const month = `${date.getFullYear()}-${date.getMonth() + 1}`;
+        const day = date.getDate();
 
         if (!monthly[month]) {
-          monthly[month] = { 出勤時間: 0 };
+          monthly[month] = {};
+        }
+
+        if (!monthly[month][day]) {
+          monthly[month][day] = 0;
         }
       });
 
-      const monthlyArray = Object.entries(monthly).map(([month, data]) => {
-        let totalWorkTime = 0;
+      const monthlyArray = Object.entries(monthly).flatMap(([month, monthData]) => {
         let lastCheckInTime: Date | null = null;
+        const dayWorkTime: { [day: number]: number } = {};
+        for (let i = 1; i <= 31; i++) {
+          dayWorkTime[i] = 0;
+        }
 
         attendanceData.forEach((record) => {
           const recordDate = new Date(record.timestamp);
           const recordMonth = `${recordDate.getFullYear()}-${recordDate.getMonth() + 1}`;
+          const recordDay = recordDate.getDate();
 
           if (month === recordMonth) {
             if (record.status === '出勤') {
               lastCheckInTime = recordDate;
             } else if (record.status === '退勤' && lastCheckInTime) {
               const timeDiff = recordDate.getTime() - lastCheckInTime.getTime();
-              totalWorkTime += timeDiff / (60 * 60 * 1000); // Convert milliseconds to hours
+              dayWorkTime[recordDay] += timeDiff / (60 * 60 * 1000); // Convert milliseconds to hours
               lastCheckInTime = null;
             }
           }
         });
 
-        return { month, 出勤時間: totalWorkTime };
+        return Object.entries(dayWorkTime).map(([day, 出勤時間]) => ({ day, 出勤時間: Number(出勤時間) }));
       });
 
       setMonthlyData(monthlyArray);
@@ -145,37 +162,46 @@ const DataTab: React.FC = () => {
 
     // Process yearly data
     const processYearlyData = () => {
-      const yearly: { [year: string]: { 出勤時間: number } } = {};
+      const yearly: { [year: string]: { [month: number]: number } } = {};
 
       attendanceData.forEach((record) => {
         const date = new Date(record.timestamp);
         const year = `${date.getFullYear()}`;
+        const month = date.getMonth() + 1;
 
         if (!yearly[year]) {
-          yearly[year] = { 出勤時間: 0 };
+          yearly[year] = {};
+        }
+
+        if (!yearly[year][month]) {
+          yearly[year][month] = 0;
         }
       });
 
-      const yearlyArray = Object.entries(yearly).map(([year, data]) => {
-        let totalWorkTime = 0;
+      const yearlyArray = Object.entries(yearly).flatMap(([year, yearData]) => {
         let lastCheckInTime: Date | null = null;
+        const monthWorkTime: { [month: number]: number } = {};
+        for (let i = 1; i <= 12; i++) {
+          monthWorkTime[i] = 0;
+        }
 
         attendanceData.forEach((record) => {
           const recordDate = new Date(record.timestamp);
           const recordYear = `${recordDate.getFullYear()}`;
+          const recordMonth = recordDate.getMonth() + 1;
 
           if (year === recordYear) {
             if (record.status === '出勤') {
               lastCheckInTime = recordDate;
             } else if (record.status === '退勤' && lastCheckInTime) {
               const timeDiff = recordDate.getTime() - lastCheckInTime.getTime();
-              totalWorkTime += timeDiff / (60 * 60 * 1000); // Convert milliseconds to hours
+              monthWorkTime[recordMonth] += timeDiff / (60 * 60 * 1000); // Convert milliseconds to hours
               lastCheckInTime = null;
             }
           }
         });
 
-        return { year, 出勤時間: totalWorkTime };
+        return Object.entries(monthWorkTime).map(([month, 出勤時間]) => ({ month, 出勤時間: Number(出勤時間) }));
       });
 
       setYearlyData(yearlyArray);
@@ -225,7 +251,7 @@ const DataTab: React.FC = () => {
           {weeklyData.length > 0 ? (
             <BarChart width={700} height={300} data={weeklyData}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="week" />
+              <XAxis dataKey="day" />
               <YAxis tickFormatter={(value: number) => {
                   if (value >= 1) {
                       return `${value.toFixed(0)} 時間`;
@@ -257,7 +283,7 @@ const DataTab: React.FC = () => {
           {monthlyData.length > 0 ? (
             <BarChart width={700} height={300} data={monthlyData}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" />
+              <XAxis dataKey="day" />
               <YAxis tickFormatter={(value: number) => {
                   if (value >= 1) {
                       return `${value.toFixed(0)} 時間`;
@@ -289,7 +315,7 @@ const DataTab: React.FC = () => {
           {yearlyData.length > 0 ? (
             <BarChart width={700} height={300} data={yearlyData}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="year" />
+              <XAxis dataKey="month" />
               <YAxis tickFormatter={(value: number) => {
                   if (value >= 1) {
                       return `${value.toFixed(0)} 時間`;
