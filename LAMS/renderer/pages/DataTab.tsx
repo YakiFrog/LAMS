@@ -42,7 +42,13 @@ const DataTab: React.FC = () => {
 
   useEffect(() => {
     const fetchAttendanceData = async () => {
-      if (!selectedStudentId) return;
+      if (!selectedStudentId) {
+        setAttendanceData([]);
+        setWeeklyData([]);
+        setMonthlyData([]);
+        setYearlyData([]);
+        return;
+      }
 
       const supabaseUrl = localStorage.getItem('supabaseUrl') || '';
       const supabaseAnonKey = localStorage.getItem('supabaseAnonKey') || '';
@@ -211,6 +217,10 @@ const DataTab: React.FC = () => {
       processWeeklyData();
       processMonthlyData();
       processYearlyData();
+    } else {
+      setWeeklyData([]);
+      setMonthlyData([]);
+      setYearlyData([]);
     }
   }, [attendanceData]);
 
