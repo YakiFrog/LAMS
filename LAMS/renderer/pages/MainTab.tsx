@@ -64,9 +64,12 @@ const useAttendanceData = (studentId: string | null) => {
           continue;
         }
 
-        const attendedDays = new Set(data.map(record => 
-          new Date(record.timestamp).toLocaleDateString()
-        ));
+        const attendedDaysSet = new Set<number>();
+        data.forEach(record => {
+          const date = new Date(record.timestamp);
+          attendedDaysSet.add(date.getDay());
+        });
+        const attendedDays = Array.from(attendedDaysSet);
 
         let totalHours = 0;
         if (data.length > 1) {
@@ -81,12 +84,10 @@ const useAttendanceData = (studentId: string | null) => {
 
         const periodKey = `${period}ly` as keyof typeof stats;
         stats[periodKey] = {
-          days: attendedDays.size,
+          days: attendedDaysSet.size,
           hours: Math.floor(totalHours),
           ...(period === 'week' && {
-            attendedDays: Array.from(new Set(data.map(record => 
-              new Date(record.timestamp).getDay()
-            )))
+            attendedDays: attendedDays
           })
         };
       }
@@ -119,13 +120,15 @@ const MainTab: React.FC = () => {
   const [weeklyTotalTime, setWeeklyTotalTime] = useState<number>(0);
   const [monthlyTotalTime, setMonthlyTotalTime] = useState<number>(0);
   const [yearlyTotalTime, setYearlyTotalTime] = useState<number>(0);
-  const [attendedDays, setAttendedDays] = useState<number[]>([]);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isClient, setIsClient] = useState(false);
   const [todayAttendance, setTodayAttendance] = useState<{
     checkIn: string | null;
     checkOut: string | null;
   }>({ checkIn: null, checkOut: null });
+  const attendanceStats = useAttendanceData(selectedStudentId);
+  const { weekly } = attendanceStats;
+  const attendedDays = weekly.attendedDays;
 
   useEffect(() => {
     setIsClient(true);
@@ -571,26 +574,33 @@ const MainTab: React.FC = () => {
             <Text p={2} pl={1} fontSize="xs" mb={4}>
               Student ID: {selectedStudentId}
             </Text>
-            <Flex justify="space-around" mb={2} fontWeight="bold" fontSize="xl">
-                <Box>
-                  出勤: {todayAttendance.checkIn || '未出勤'}
-                </Box>
-                <Box>
-                  退勤: {todayAttendance.checkOut || '未退勤'}
-                </Box>
+            <Flex justify="space-around" mb={2} fontSize="xl">
+              <Box>
+                出勤: <Text as="span" fontSize={todayAttendance.checkIn ? "3xl" : "3xl"} fontWeight="bold">
+                {todayAttendance.checkIn || '未出勤'}
+                </Text>
+              </Box>
+              <Box>
+                退勤: <Text as="span" fontSize={todayAttendance.checkOut ? "3xl" : "3xl"} fontWeight="bold">
+                {todayAttendance.checkOut || '未退勤'}
+                </Text>
+              </Box>
               </Flex>
             <Box borderWidth="1px" borderRadius="xl" p={2} boxShadow="sm">
               <Flex justify="space-around" mb={2}>
-                {['月', '火', '水', '木', '金', '土', '日'].map((day, index) => (
-                  <Box
-                    key={day} width="30px" height="30px" borderRadius="50%"
-                    bg={attendedDays.includes(index) ? 'blue.500' : 'gray.200'}
-                    color={attendedDays.includes(index) ? 'white' : 'gray.500'}
-                    display="flex" alignItems="center" justifyContent="center" fontSize="sm" m={1}
-                  >
-                    {day}
-                  </Box>
-                ))}
+                {['月', '火', '水', '木', '金', '土', '日'].map((day, index) => {
+                  const dayIndex = (index + 1) % 7;
+                  return (
+                    <Box
+                      key={day} width="30px" height="30px" borderRadius="50%"
+                      bg={attendedDays?.includes(dayIndex) ? 'blue.500' : 'gray.200'}
+                      color={attendedDays?.includes(dayIndex) ? 'white' : 'gray.500'}
+                      display="flex" alignItems="center" justifyContent="center" fontSize="sm" m={1}
+                    >
+                      {day}
+                    </Box>
+                  );
+                })}
               </Flex>
               <Box pl={1}>
                 <Text fontSize="sm" mb={1}>
