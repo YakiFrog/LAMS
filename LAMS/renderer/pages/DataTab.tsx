@@ -65,6 +65,43 @@ const DataTab: React.FC = () => {
       });
 
       setStudents(groupedStudents);
+
+      // 年間の出勤時間が最も長い学生を初期選択する関数
+      const selectStudentWithMostWorkTime = async (students: { [grade: string]: Student[] }) => {
+        let maxWorkTime = 0;
+        let studentIdWithMaxWorkTime = '';
+
+        for (const grade in students) {
+          for (const student of students[grade]) {
+            // 出勤データを取得
+            const { data: attendanceData, error: attendanceError } = await supabaseClient
+              .from('attendance')
+              .select('*')
+              .eq('student_id', student.id)
+              .order('timestamp', { ascending: true });
+
+            if (attendanceError) {
+              console.error('Error fetching attendance data:', attendanceError);
+              continue;
+            }
+
+            // 年間の出勤時間を計算
+            const yearlyData = processAttendanceData(attendanceData || [], 'yearly');
+            const totalWorkTime = yearlyData.reduce((sum, item) => sum + item.出勤時間, 0);
+
+            if (totalWorkTime > maxWorkTime) {
+              maxWorkTime = totalWorkTime;
+              studentIdWithMaxWorkTime = student.id;
+            }
+          }
+        }
+
+        return studentIdWithMaxWorkTime;
+      };
+
+      // 年間の出勤時間が最も長い学生を選択
+      const initialStudentId = await selectStudentWithMostWorkTime(groupedStudents);
+      setSelectedStudentId(initialStudentId);
     };
 
     fetchData();
@@ -218,41 +255,59 @@ const DataTab: React.FC = () => {
     });
   };
 
-  const renderChart = (data: any[], dataKey: string, chartType: 'weekly' | 'monthly' | 'yearly', height: number, xAxisDataKey: string) => (
-    <Box>
-      <Heading as="h3" size="md" mb={3} pl={0}>
-        {chartType === 'weekly' ? '週ごとの出勤時間' : chartType === 'monthly' ? '月ごとの出勤時間' : '年ごとの出勤時間'}
-      </Heading>
-      <ResponsiveContainer width="100%" height={height}>
-        <BarChart
-          data={data.length > 0 ? data : []}
-          margin={{ top: 0, right: 10, left: 0, bottom: 5 }}
-          onMouseMove={(event) => {
-            if (event && event.activePayload && event.activePayload[0]) {
-              setHoveredData({ type: chartType, data: event.activePayload[0].payload });
-            } else {
-              setHoveredData(null);
-            }
-          }}
-          onMouseLeave={() => setHoveredData(null)}
-        >
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey={xAxisDataKey} />
-          <YAxis tickFormatter={(value: number) => {
-            if (value >= 1) {
-              return `${value.toFixed(0)} 時間`;
-            } else if (value * 60 >= 1) {
-              return `${(value * 60).toFixed(0)} 分`;
-            } else {
-              return `${(value * 60 * 60).toFixed(0)} 秒`;
-            }
-          }} />
-          <Tooltip content={<CustomTooltip payload={hoveredData?.type === chartType ? [hoveredData.data] : []} />} />
-          <Bar dataKey={dataKey} fill="#28a745" barSize={15} />
-        </BarChart>
-      </ResponsiveContainer>
-    </Box>
-  );
+  const renderChart = (data: any[], dataKey: string, chartType: 'weekly' | 'monthly' | 'yearly', height: number, xAxisDataKey: string) => {
+    // 合計出勤時間を計算
+    const totalWorkTime = data.reduce((sum, item) => sum + item[dataKey], 0);
+
+    // 単位を適切に変換
+    let displayTime: string;
+    if (totalWorkTime >= 1) {
+      displayTime = `${totalWorkTime.toFixed(2)} 時間`;
+    } else if (totalWorkTime * 60 >= 1) {
+      displayTime = `${(totalWorkTime * 60).toFixed(2)} 分`;
+    } else {
+      displayTime = `${(totalWorkTime * 60 * 60).toFixed(2)} 秒`;
+    }
+
+    return (
+      <Box>
+        <Heading as="h3" size="md" mb={3} pl={0}>
+          {chartType === 'weekly' ? '週ごとの出勤時間' : chartType === 'monthly' ? '月ごとの出勤時間' : '年ごとの出勤時間'}
+          <Text fontSize="sm" fontWeight="bold" ml={2} display="inline">
+            (合計: {displayTime})
+          </Text>
+        </Heading>
+        <ResponsiveContainer width="100%" height={height}>
+          <BarChart
+            data={data.length > 0 ? data : []}
+            margin={{ top: 0, right: 10, left: 0, bottom: 5 }}
+            onMouseMove={(event) => {
+              if (event && event.activePayload && event.activePayload[0]) {
+                setHoveredData({ type: chartType, data: event.activePayload[0].payload });
+              } else {
+                setHoveredData(null);
+              }
+            }}
+            onMouseLeave={() => setHoveredData(null)}
+          >
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey={xAxisDataKey} />
+            <YAxis tickFormatter={(value: number) => {
+              if (value >= 1) {
+                return `${value.toFixed(0)} 時間`;
+              } else if (value * 60 >= 1) {
+                return `${(value * 60).toFixed(0)} 分`;
+              } else {
+                return `${(value * 60 * 60).toFixed(0)} 秒`;
+              }
+            }} />
+            <Tooltip content={<CustomTooltip payload={hoveredData?.type === chartType ? [hoveredData.data] : []} />} />
+            <Bar dataKey={dataKey} fill="#28a745" barSize={15} />
+          </BarChart>
+        </ResponsiveContainer>
+      </Box>
+    );
+  };
 
   return (
     <Box textAlign="left" p={0} height="100%">
