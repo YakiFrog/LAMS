@@ -32,6 +32,9 @@ const DataTab: React.FC = () => {
   const fontSize = '2xl'; // 文字サイズを調整するための変数（文字サイズは 'xs', 'sm', 'md', 'lg', 'xl', '2xl', '3xl', '4xl', '5xl', '6xl' のいずれか）
   const fontSizePixel = theme.fontSizes[fontSize]; // fontSizeに対応するピクセル値を取得
 
+  // ホバーされたデータポイントを追跡するための状態
+  const [hoveredData, setHoveredData] = useState<any>(null);
+
   useEffect(() => {
     const fetchData = async () => {
       const supabaseUrl = localStorage.getItem('supabaseUrl') || '';
@@ -112,12 +115,13 @@ const DataTab: React.FC = () => {
     // Process weekly data
     const processWeeklyData = () => {
       const weekly: { [week: string]: { [day: string]: number } } = {};
-      const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
+      const dayNames = ['月', '火', '水', '木', '金', '土', '日'];
 
       attendanceData.forEach((record) => {
         const date = new Date(record.timestamp);
         const week = `${date.getFullYear()}-W${getWeek(date)}`;
-        const day = dayNames[date.getDay()];
+        const dayIndex = (date.getDay() + 6) % 7; // 月曜日を0とする
+        const day = dayNames[dayIndex];
 
         if (!weekly[week]) {
           weekly[week] = {};
@@ -136,7 +140,8 @@ const DataTab: React.FC = () => {
         attendanceData.forEach((record) => {
           const recordDate = new Date(record.timestamp);
           const recordWeek = `${recordDate.getFullYear()}-W${getWeek(recordDate)}`;
-          const recordDay = dayNames[recordDate.getDay()];
+          const recordDayIndex = (recordDate.getDay() + 6) % 7; // 月曜日を0とする
+          const recordDay = dayNames[recordDayIndex];
 
           if (week === recordWeek) {
             if (record.status === '出勤') {
@@ -263,9 +268,10 @@ const DataTab: React.FC = () => {
   // Function to get the week number
   const getWeek = (date: Date) => {
     const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-    const dayNum = d.getUTCDay() || 7;
-    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    let dayNum = d.getUTCDay(); // 0 (日) から 6 (土)
+    dayNum = (dayNum + 6) % 7; // 月曜日を0とする (0: 月, 1: 火, ..., 6: 日)
+    d.setUTCDate(d.getUTCDate() + 3 - dayNum);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 4));
     return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
   };
 
@@ -305,11 +311,20 @@ const DataTab: React.FC = () => {
           <Flex direction="column" height="100%">
             {selectedStudentId && (
               <Box>
-                <Heading as="h3" size="md" mb={4}>
+                <Heading as="h3" size="md" mb={3}>
                   週ごとの出勤時間
                 </Heading>
                 <ResponsiveContainer width="100%" height={250}>
-                  <BarChart data={weeklyData.length > 0 ? weeklyData : []}>
+                  <BarChart data={weeklyData.length > 0 ? weeklyData : []}
+                    onMouseMove={(event) => {
+                      if (event && event.activePayload && event.activePayload[0]) {
+                        setHoveredData({ type: 'weekly', data: event.activePayload[0].payload });
+                      } else {
+                        setHoveredData(null);
+                      }
+                    }}
+                    onMouseLeave={() => setHoveredData(null)}
+                  >
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="day" />
                     <YAxis tickFormatter={(value: number) => {
@@ -321,25 +336,28 @@ const DataTab: React.FC = () => {
                         return `${(value * 60 * 60).toFixed(0)} 秒`;
                       }
                     }} />
-                    <Tooltip formatter={(value: number) => {
-                      if (value >= 1) {
-                        return `${value.toFixed(2)} 時間`;
-                      } else if (value * 60 >= 1) {
-                        return `${value.toFixed(2)} 分`;
-                      } else {
-                        return `${value * 60 * 60} 秒`;
-                      }
-                    }} />
+                    <Tooltip
+                      content={<CustomTooltip type="weekly" payload={hoveredData?.type === 'weekly' ? [hoveredData.data] : []} />}
+                    />
                     {/* <Legend /> */}
                     <Bar dataKey="出勤時間" fill="#28a745" barSize={15} />
                   </BarChart>
                 </ResponsiveContainer>
 
-                <Heading as="h3" size="md" mb={4}>
+                <Heading as="h3" size="md" mb={3} mt={2}>
                   月ごとの出勤時間
                 </Heading>
                 <ResponsiveContainer width="100%" height={150}>
-                  <BarChart data={monthlyData.length > 0 ? monthlyData : []}>
+                  <BarChart data={monthlyData.length > 0 ? monthlyData : []}
+                    onMouseMove={(event) => {
+                      if (event && event.activePayload && event.activePayload[0]) {
+                        setHoveredData({ type: 'monthly', data: event.activePayload[0].payload });
+                      } else {
+                        setHoveredData(null);
+                      }
+                    }}
+                    onMouseLeave={() => setHoveredData(null)}
+                  >
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="day" />
                     <YAxis tickFormatter={(value: number) => {
@@ -351,25 +369,28 @@ const DataTab: React.FC = () => {
                         return `${(value * 60 * 60).toFixed(0)} 秒`;
                       }
                     }} />
-                    <Tooltip formatter={(value: number) => {
-                      if (value >= 1) {
-                        return `${value.toFixed(2)} 時間`;
-                      } else if (value * 60 >= 1) {
-                        return `${value.toFixed(2)} 分`;
-                      } else {
-                        return `${value * 60 * 60} 秒`;
-                      }
-                    }} />
+                    <Tooltip
+                      content={<CustomTooltip type="monthly" payload={hoveredData?.type === 'monthly' ? [hoveredData.data] : []} />}
+                    />
                     {/* <Legend /> */}
                     <Bar dataKey="出勤時間" fill="#28a745" barSize={15} />
                   </BarChart>
                 </ResponsiveContainer>
 
-                <Heading as="h3" size="md" mb={4}>
+                <Heading as="h3" size="md" mb={3} mt={2}>
                   年ごとの出勤時間
                 </Heading>
                 <ResponsiveContainer width="100%" height={150}>
-                  <BarChart data={yearlyData.length > 0 ? yearlyData : []}>
+                  <BarChart data={yearlyData.length > 0 ? yearlyData : []}
+                    onMouseMove={(event) => {
+                      if (event && event.activePayload && event.activePayload[0]) {
+                        setHoveredData({ type: 'yearly', data: event.activePayload[0].payload });
+                      } else {
+                        setHoveredData(null);
+                      }
+                    }}
+                    onMouseLeave={() => setHoveredData(null)}
+                  >
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="month" />
                     <YAxis tickFormatter={(value: number) => {
@@ -381,15 +402,9 @@ const DataTab: React.FC = () => {
                         return `${(value * 60 * 60).toFixed(0)} 秒`;
                       }
                     }} />
-                    <Tooltip formatter={(value: number) => {
-                      if (value >= 1) {
-                        return `${value.toFixed(2)} 時間`;
-                      } else if (value * 60 >= 1) {
-                        return `${value.toFixed(2)} 分`;
-                      } else {
-                        return `${value * 60 * 60} 秒`;
-                      }
-                    }} />
+                    <Tooltip
+                      content={<CustomTooltip type="yearly" payload={hoveredData?.type === 'yearly' ? [hoveredData.data] : []} />}
+                    />
                     {/* <Legend /> */}
                     <Bar dataKey="出勤時間" fill="#28a745" barSize={15} />
                   </BarChart>
@@ -447,6 +462,35 @@ const DataTab: React.FC = () => {
       </Grid>
     </Box>
   );
+};
+
+// カスタムTooltipコンポーネント
+const CustomTooltip: React.FC<{ type: string; payload: any[] }> = ({ type, payload }) => {
+  if (payload && payload.length > 0) {
+    const data = payload[0].payload;
+    let label = '';
+    let value = '';
+
+    if (type === 'weekly') {
+      label = `曜日: ${data.day}`;
+      value = `出勤時間: ${data.出勤時間.toFixed(2)} 時間`;
+    } else if (type === 'monthly') {
+      label = `日: ${data.day}`;
+      value = `出勤時間: ${data.出勤時間.toFixed(2)} 時間`;
+    } else if (type === 'yearly') {
+      label = `月: ${data.month}`;
+      value = `出勤時間: ${data.出勤時間.toFixed(2)} 時間`;
+    }
+
+    return (
+      <Box bg="white" border="1px solid #ccc" p={2}>
+        <Text>{label}</Text>
+        <Text>{value}</Text>
+      </Box>
+    );
+  }
+
+  return null;
 };
 
 export default DataTab;

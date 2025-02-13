@@ -142,7 +142,10 @@ const MainTab: React.FC = () => {
 
     // 今週の出勤データを取得
     const startOfWeek = new Date();
-    startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay()); // 今週の日曜日に設定
+    // startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay()); // 今週の日曜日に設定
+    const dayOfWeek = startOfWeek.getDay(); // 0 (日) から 6 (土) の値
+    const mondayOffset = (dayOfWeek === 0 ? 6 : dayOfWeek - 1); // 月曜日を基準にするオフセット
+    startOfWeek.setDate(startOfWeek.getDate() - mondayOffset); // 今週の月曜日に設定
     startOfWeek.setHours(0, 0, 0, 0);
 
     const { data: weeklyData, error: weeklyError } = await supabaseClient
@@ -324,7 +327,7 @@ const MainTab: React.FC = () => {
     const { error: attendanceError } = await supabaseClient
       .from('attendance')
       .insert([
-        { student_id: studentId, status: status, timestamp: new Date() },
+        { student_id: studentId, status: status, timestamp: new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' }) },
       ]);
 
     if (attendanceError) {
@@ -353,6 +356,56 @@ const MainTab: React.FC = () => {
       [selectedStudent]: status,
     }));
   };
+
+  // 自動退勤と日付リセットのための useEffect
+  useEffect(() => {
+    const checkAndUpdateAttendance = async () => {
+      const currentTime = new Date();
+      const hours = currentTime.getHours();
+      const minutes = currentTime.getMinutes();
+
+      if (hours === 22 && minutes === 30) {
+        const supabaseUrl = localStorage.getItem('supabaseUrl') || '';
+        const supabaseAnonKey = localStorage.getItem('supabaseAnonKey') || '';
+        const supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
+
+        // 出勤中の学生を全て退勤に変更
+        for (const studentId in attendanceStatus) {
+          if (attendanceStatus[studentId] === '出勤') {
+            await supabaseClient
+              .from('attendance')
+              .insert([
+                {
+                  student_id: studentId,
+                  status: '退勤',
+                  timestamp: new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })
+                },
+              ]);
+
+            setAttendanceStatus((prevStatus) => ({
+              ...prevStatus,
+              [studentId]: '退勤',
+            }));
+          }
+        }
+      }
+    };
+
+    const resetAttendanceStatus = () => {
+      const currentTime = new Date();
+      if (currentTime.getHours() === 0 && currentTime.getMinutes() === 0) {
+        setAttendanceStatus({});
+      }
+    };
+
+    // 1分ごとにチェック
+    const intervalId = setInterval(() => {
+      checkAndUpdateAttendance();
+      resetAttendanceStatus();
+    }, 60000);
+
+    return () => clearInterval(intervalId);
+  }, [attendanceStatus]);
 
   return (
     <Box 

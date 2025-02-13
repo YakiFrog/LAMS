@@ -269,6 +269,78 @@ const AdminTab: React.FC = () => {
     }
   };
 
+  const handleDeleteAllAttendances = async () => {
+    if (!supabaseUrl || !supabaseAnonKey) {
+      toast({
+        title: 'Error',
+        description: 'Supabase URL and Anon Key are not set.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+      return;
+    }
+
+    if (window.confirm('Are you sure you want to delete all attendances? This action cannot be undone.')) {
+      const supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
+
+      // studentsテーブルからstudent_idを取得
+      const { data: students, error: studentsError } = await supabaseClient
+        .from('students')
+        .select('id');
+
+      if (studentsError) {
+        console.error('Error fetching student ids:', studentsError);
+        toast({
+          title: 'Error',
+          description: studentsError.message,
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
+        return;
+      }
+
+      // student_idが存在する場合のみattendanceを削除
+      if (students && students.length > 0) {
+        const studentIds = students.map((student) => student.id);
+
+        const { error } = await supabaseClient
+          .from('attendance')
+          .delete()
+          .in('student_id', studentIds);
+
+        if (error) {
+          console.error('Error deleting all attendances:', error);
+          toast({
+            title: 'Error',
+            description: error.message,
+            status: 'error',
+            duration: 5000,
+            isClosable: true,
+          });
+          return;
+        } else {
+          toast({
+            title: 'Success',
+            description: 'All attendances deleted successfully!',
+            status: 'success',
+            duration: 3000,
+            isClosable: true,
+          });
+        }
+      } else {
+        toast({
+          title: 'Info',
+          description: 'No students found, no attendances to delete.',
+          status: 'info',
+          duration: 3000,
+          isClosable: true,
+        });
+      }
+    }
+  };
+
   return (
     <Box 
       textAlign="left" 
@@ -380,6 +452,15 @@ const AdminTab: React.FC = () => {
           全学生を削除
         </Heading>
         <Button colorScheme="red" onClick={handleDeleteAllStudents}>
+          削除
+        </Button>
+      </Box>
+
+      <Box display="flex" alignItems="center" mt={6} mb={4}>
+        <Heading size="md" mr={2} pr={5}>
+          全出勤時間を削除
+        </Heading>
+        <Button colorScheme="red" onClick={handleDeleteAllAttendances}>
           削除
         </Button>
       </Box>
