@@ -13,7 +13,6 @@ const Home: React.FC = () => {
     justifyContent: 'center',
     alignItems: 'center',
     minHeight: '100vh', // viewportの高さいっぱいにする
-    width: '100%', // 親要素の幅を100%使用
   };
 
   // フォントサイズの定数を追加
@@ -52,16 +51,18 @@ const Home: React.FC = () => {
   };
 
   const squareStyle = {
-    width: 'min(95vw, 95vh)', // viewportの幅と高さの小さい方の90%を採用
-    height: 'min(95vw, 95vh)',
+    width: 'min(97vw, 97vh)', // viewportの幅と高さの小さい方の90%を採用
+    height: 'min(97vw, 97vh)',
     border: '1px solid black',
     boxSizing: 'border-box' as 'border-box', // padding, borderをwidth, heightに含める
     display: 'flex',
     flexDirection: 'column' as 'column', // Changed back to column
-    margin: '10px 0', // 上下に20pxのマージンを追加
+    margin: '0px 0', // 上下に20pxのマージンを追加
     overflow: 'hidden', // Add overflow hidden
     fontSize: isLargerThan480 ? FONT_SIZES.content.large : FONT_SIZES.content.small, // 16px -> 1rem, 10px -> 0.875rem
     boxShadow: '0 0.25rem 0.75rem rgba(0, 0, 0, 0.2)', // 4px -> 0.25rem, 12px -> 0.75rem
+    borderRadius: '10px', // 角を丸くする
+    padding: '10px', // Add padding around the content
   };
 
   const tabsStyle = {
@@ -84,8 +85,8 @@ const Home: React.FC = () => {
   };
 
   return (
-    <div style={containerStyle}>
-      <div style={squareStyle}>
+    <div style={{ ...containerStyle, backgroundColor: '#222222' }}>
+      <div style={{ ...squareStyle, backgroundColor: 'white' }}>
         <Tabs
           align="center"
           isFitted

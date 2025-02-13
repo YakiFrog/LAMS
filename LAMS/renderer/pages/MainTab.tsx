@@ -12,6 +12,94 @@ interface Student {
   grade: string;
 }
 
+const useSupabaseClient = () => {
+  const supabaseUrl = localStorage.getItem('supabaseUrl') || '';
+  const supabaseAnonKey = localStorage.getItem('supabaseAnonKey') || '';
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error('Supabase credentials not found');
+  }
+
+  return createClient(supabaseUrl, supabaseAnonKey);
+};
+
+const useAttendanceData = (studentId: string | null) => {
+  const [attendanceStats, setAttendanceStats] = useState({
+    weekly: { days: 0, hours: 0, attendedDays: [] as number[] },
+    monthly: { days: 0, hours: 0 },
+    yearly: { days: 0, hours: 0 }
+  });
+
+  useEffect(() => {
+    if (!studentId) return;
+
+    const fetchData = async () => {
+      const supabase = useSupabaseClient();
+      const now = new Date();
+
+      const startDates = {
+        week: (() => {
+          const date = new Date(now);
+          const dayOffset = date.getDay() === 0 ? 6 : date.getDay() - 1;
+          date.setDate(date.getDate() - dayOffset);
+          date.setHours(0, 0, 0, 0);
+          return date;
+        })(),
+        month: new Date(now.getFullYear(), now.getMonth(), 1),
+        year: new Date(now.getFullYear(), 0, 1)
+      };
+
+      const periods = ['week', 'month', 'year'] as const;
+      const stats = { weekly: {}, monthly: {}, yearly: {} };
+
+      for (const period of periods) {
+        const { data, error } = await supabase
+          .from('attendance')
+          .select('*')
+          .eq('student_id', studentId)
+          .gte('timestamp', startDates[period].toISOString());
+
+        if (error) {
+          console.error(`Error fetching ${period} attendance:`, error);
+          continue;
+        }
+
+        const attendedDays = new Set(data.map(record => 
+          new Date(record.timestamp).toLocaleDateString()
+        ));
+
+        let totalHours = 0;
+        if (data.length > 1) {
+          for (let i = 0; i < data.length - 1; i += 2) {
+            if (data[i].status === '出勤' && data[i + 1]?.status === '退勤') {
+              const duration = new Date(data[i + 1].timestamp).getTime() - 
+                             new Date(data[i].timestamp).getTime();
+              totalHours += duration / (1000 * 60 * 60);
+            }
+          }
+        }
+
+        const periodKey = `${period}ly` as keyof typeof stats;
+        stats[periodKey] = {
+          days: attendedDays.size,
+          hours: Math.floor(totalHours),
+          ...(period === 'week' && {
+            attendedDays: Array.from(new Set(data.map(record => 
+              new Date(record.timestamp).getDay()
+            )))
+          })
+        };
+      }
+
+      setAttendanceStats(stats as any);
+    };
+
+    fetchData();
+  }, [studentId]);
+
+  return attendanceStats;
+};
+
 const MainTab: React.FC = () => {
   const [students, setStudents] = useState<{ [grade: string]: Student[] }>({
     M2: [], M1: [], B4: [],
@@ -47,15 +135,7 @@ const MainTab: React.FC = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      const supabaseUrl = localStorage.getItem('supabaseUrl') || '';
-      const supabaseAnonKey = localStorage.getItem('supabaseAnonKey') || '';
-
-      if (!supabaseUrl || !supabaseAnonKey) {
-        console.error('Supabase URL and Anon Key are not set.');
-        return;
-      }
-
-      const supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
+      const supabaseClient = useSupabaseClient();
 
       const { data: studentsData, error } = await supabaseClient
         .from('students')
@@ -90,15 +170,7 @@ const MainTab: React.FC = () => {
 
   useEffect(() => {
     const fetchInitialAttendance = async () => {
-      const supabaseUrl = localStorage.getItem('supabaseUrl') || '';
-      const supabaseAnonKey = localStorage.getItem('supabaseAnonKey') || '';
-
-      if (!supabaseUrl || !supabaseAnonKey) {
-        console.error('Supabase URL and Anon Key are not set.');
-        return;
-      }
-
-      const supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
+      const supabaseClient = useSupabaseClient();
 
       const initialStatus: { [studentId: string]: '出勤' | '退勤' | null } = {};
 
@@ -139,15 +211,7 @@ const MainTab: React.FC = () => {
   }, [students]);
 
   const fetchAttendanceData = async (studentId: string) => {
-    const supabaseUrl = localStorage.getItem('supabaseUrl') || '';
-    const supabaseAnonKey = localStorage.getItem('supabaseAnonKey') || '';
-
-    if (!supabaseUrl || !supabaseAnonKey) {
-      console.error('Supabase URL and Anon Key are not set.');
-      return;
-    }
-
-    const supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
+    const supabaseClient = useSupabaseClient();
 
     const startOfWeek = new Date();
     const dayOfWeek = startOfWeek.getDay();
@@ -316,47 +380,42 @@ const MainTab: React.FC = () => {
       return;
     }
 
-    const supabaseUrl = localStorage.getItem('supabaseUrl') || '';
-    const supabaseAnonKey = localStorage.getItem('supabaseAnonKey') || '';
+    try {
+      const supabase = useSupabaseClient();
+      const { error } = await supabase
+        .from('attendance')
+        .insert([{
+          student_id: selectedStudentId,
+          status,
+          timestamp: new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })
+        }]);
 
-    if (!supabaseUrl || !supabaseAnonKey) {
-      console.error('Supabase URL and Anon Key are not set.');
-      return;
-    }
+      if (error) throw error;
 
-    const supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
+      setAttendanceStatus(prev => ({
+        ...prev,
+        [selectedStudentId]: status
+      }));
 
-    const { error: attendanceError } = await supabaseClient
-      .from('attendance')
-      .insert([
-        { student_id: selectedStudentId, status: status, timestamp: new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' }) },
-      ]);
-
-    if (attendanceError) {
-      console.error('Error recording attendance:', attendanceError);
       toast({
-        title: 'Attendance Failed',
-        description: 'There was an error recording attendance.',
+        title: '記録完了',
+        description: `${status}を記録しました`,
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
+
+      handleCloseModal();
+    } catch (error) {
+      console.error('Attendance error:', error);
+      toast({
+        title: '記録失敗',
+        description: 'エラーが発生しました',
         status: 'error',
         duration: 3000,
         isClosable: true,
       });
-      return;
     }
-
-    handleCloseModal();
-    toast({
-      title: 'Attendance Recorded',
-      description: `Successfully recorded ${status} for the student.`,
-      status: 'success',
-      duration: 3000,
-      isClosable: true,
-    });
-
-    setAttendanceStatus((prevStatus) => ({
-      ...prevStatus,
-      [selectedStudentId]: status,
-    }));
   };
 
   useEffect(() => {
@@ -366,9 +425,7 @@ const MainTab: React.FC = () => {
       const minutes = currentTime.getMinutes();
 
       if (hours === 22 && minutes === 30) {
-        const supabaseUrl = localStorage.getItem('supabaseUrl') || '';
-        const supabaseAnonKey = localStorage.getItem('supabaseAnonKey') || '';
-        const supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
+        const supabaseClient = useSupabaseClient();
 
         for (const studentId in attendanceStatus) {
           if (attendanceStatus[studentId] === '出勤') {
@@ -413,7 +470,7 @@ const MainTab: React.FC = () => {
           {section === 'M2' && (
             <Text fontSize="2xl" fontWeight="extrabold" mb={3}
               bg="gray.100" borderRadius="md" p={2} textAlign="center">
-              {isClient ? currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'Loading...'}
+              {isClient ? `${currentTime.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short'})}　${currentTime.toLocaleTimeString('ja-JP', { hour: 'numeric', minute: 'numeric', second: 'numeric' })}` : 'Loading...'}
             </Text>
           )}
           <Heading as="h3" size="md" fontSize={fontSize}>
@@ -504,6 +561,5 @@ const MainTab: React.FC = () => {
     </Box>
   );
 };
-
 
 export default MainTab;

@@ -107,7 +107,7 @@ const DataTab: React.FC = () => {
     attendanceData: AttendanceRecord[],
     timeFrame: 'weekly' | 'monthly' | 'yearly'
   ): any[] => {
-    const timeData: { [key: string]: { [key: number]: number } } = {};
+    const timeData: { [key: string]: { checkIn: Date | null, workTime: { [key: number]: number } } } = {};
     const dayNames = ['月', '火', '水', '木', '金', '土', '日'];
 
     attendanceData.forEach((record) => {
@@ -127,56 +127,31 @@ const DataTab: React.FC = () => {
       }
 
       if (!timeData[timeKey]) {
-        timeData[timeKey] = {};
+        timeData[timeKey] = { checkIn: null, workTime: {} };
+        if (timeFrame === 'weekly') {
+          dayNames.forEach((_, i) => (timeData[timeKey].workTime[i] = 0));
+        } else if (timeFrame === 'monthly') {
+          for (let i = 1; i <= 31; i++) {
+            timeData[timeKey].workTime[i] = 0;
+          }
+        } else if (timeFrame === 'yearly') {
+          for (let i = 1; i <= 12; i++) {
+            timeData[timeKey].workTime[i] = 0;
+          }
+        }
       }
 
-      if (!timeData[timeKey][timeValue]) {
-        timeData[timeKey][timeValue] = 0;
+      if (record.status === '出勤') {
+        timeData[timeKey].checkIn = date;
+      } else if (record.status === '退勤' && timeData[timeKey].checkIn) {
+        const timeDiff = date.getTime() - timeData[timeKey].checkIn!.getTime();
+        timeData[timeKey].workTime[timeValue] += timeDiff / (60 * 60 * 1000); // Convert milliseconds to hours
+        timeData[timeKey].checkIn = null;
       }
     });
 
-    return Object.entries(timeData).flatMap(([timeKey, timeData]) => {
-      let lastCheckInTime: Date | null = null;
-      const workTime: { [key: number]: number } = {};
-      if (timeFrame === 'weekly') {
-        dayNames.forEach((_, i) => (workTime[i] = 0));
-      } else if (timeFrame === 'monthly') {
-        for (let i = 1; i <= 31; i++) {
-          workTime[i] = 0;
-        }
-      } else if (timeFrame === 'yearly') {
-        for (let i = 1; i <= 12; i++) {
-          workTime[i] = 0;
-        }
-      }
-
-      attendanceData.forEach((record) => {
-        const recordDate = new Date(record.timestamp);
-        let recordTimeKey: string = '';
-        let recordTimeValue: number = 0;
-
-        if (timeFrame === 'weekly') {
-          recordTimeKey = `${recordDate.getFullYear()}-W${getWeek(recordDate)}`;
-          recordTimeValue = (recordDate.getDay() + 6) % 7;
-        } else if (timeFrame === 'monthly') {
-          recordTimeKey = `${recordDate.getFullYear()}-${recordDate.getMonth() + 1}`;
-          recordTimeValue = recordDate.getDate();
-        } else if (timeFrame === 'yearly') {
-          recordTimeKey = `${recordDate.getFullYear()}`;
-          recordTimeValue = recordDate.getMonth() + 1;
-        }
-
-        if (timeKey === recordTimeKey) {
-          if (record.status === '出勤') {
-            lastCheckInTime = recordDate;
-          } else if (record.status === '退勤' && lastCheckInTime) {
-            const timeDiff = recordDate.getTime() - lastCheckInTime.getTime();
-            workTime[recordTimeValue] += timeDiff / (60 * 60 * 1000); // Convert milliseconds to hours
-            lastCheckInTime = null;
-          }
-        }
-      });
-
+    return Object.entries(timeData).flatMap(([timeKey, data]) => {
+      const workTime = data.workTime;
       if (timeFrame === 'weekly') {
         return Object.entries(workTime).map(([dayIndex, 出勤時間]) => ({
           day: dayNames[Number(dayIndex)],
@@ -245,12 +220,13 @@ const DataTab: React.FC = () => {
 
   const renderChart = (data: any[], dataKey: string, chartType: 'weekly' | 'monthly' | 'yearly', height: number, xAxisDataKey: string) => (
     <Box>
-      <Heading as="h3" size="md" mb={3}>
+      <Heading as="h3" size="md" mb={3} pl={0}>
         {chartType === 'weekly' ? '週ごとの出勤時間' : chartType === 'monthly' ? '月ごとの出勤時間' : '年ごとの出勤時間'}
       </Heading>
       <ResponsiveContainer width="100%" height={height}>
         <BarChart
           data={data.length > 0 ? data : []}
+          margin={{ top: 0, right: 10, left: 0, bottom: 5 }}
           onMouseMove={(event) => {
             if (event && event.activePayload && event.activePayload[0]) {
               setHoveredData({ type: chartType, data: event.activePayload[0].payload });
@@ -317,7 +293,7 @@ const DataTab: React.FC = () => {
                         pl={2}
                         pr={2}
                         boxShadow="sm"
-                        fontSize="lg"
+                        fontSize="md"
                         width="100%"
                         textAlign="center"
                         margin={0}
