@@ -104,7 +104,16 @@ const DataTab: React.FC = () => {
       setSelectedStudentId(initialStudentId);
     };
 
+    // 初回データ取得
     fetchData();
+
+    // 10秒ごとにデータを更新
+    const intervalId = setInterval(() => {
+      fetchData();
+    }, 10000);
+
+    // クリーンアップ関数
+    return () => clearInterval(intervalId);
   }, []);
 
   useEffect(() => {
@@ -136,7 +145,16 @@ const DataTab: React.FC = () => {
       setAttendanceData(attendanceData || []);
     };
 
+    // 初回データ取得
     fetchAttendanceData();
+
+    // 10秒ごとにデータを更新
+    const intervalId = setInterval(() => {
+      fetchAttendanceData();
+    }, 10000);
+
+    // クリーンアップ関数
+    return () => clearInterval(intervalId);
   }, [selectedStudentId]);
 
   // 勤務時間を集計する共通関数

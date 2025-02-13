@@ -101,6 +101,12 @@ const useAttendanceData = (studentId: string | null) => {
   return attendanceStats;
 };
 
+const REFRESH_INTERVAL = {
+  ATTENDANCE_STATUS: 3000,  // 出退勤状態: 3秒
+  STATISTICS: 10000,        // 統計データ: 10秒
+  STUDENT_LIST: 30000      // 学生一覧: 30秒
+};
+
 const MainTab: React.FC = () => {
   const [students, setStudents] = useState<{ [grade: string]: Student[] }>({
     M2: [], M1: [], B4: [],
@@ -437,13 +443,10 @@ const MainTab: React.FC = () => {
       const today = new Date().toLocaleDateString('ja-JP');
 
       // 新しいattendanceStatusを更新
-      setAttendanceStatus(prev => {
-        const newStatus = {
-          ...prev,
-          [selectedStudentId]: { status, timestamp }
-        };
-        return newStatus;
-      });
+      setAttendanceStatus(prev => ({
+        ...prev,
+        [selectedStudentId]: { status, timestamp }
+      }));
 
       // 本日の出勤データを再取得
       fetchTodayAttendance(selectedStudentId);
@@ -513,6 +516,170 @@ const MainTab: React.FC = () => {
 
     return () => clearInterval(intervalId);
   }, [attendanceStatus]);
+
+  // 10秒ごとのデータ更新を実装
+  useEffect(() => {
+    // 初期データ取得
+    const initialFetch = async () => {
+      const supabaseClient = useSupabaseClient();
+
+      // 学生データの取得
+      const { data: studentsData, error } = await supabaseClient
+        .from('students')
+        .select('*');
+
+      if (error) {
+        console.error('Error fetching students:', error);
+        return;
+      }
+
+      const groupedStudents: { [grade: string]: Student[] } = { M2: [], M1: [], B4: [] };
+      studentsData.forEach((student) => {
+        if (!groupedStudents[student.grade]) {
+          groupedStudents[student.grade] = [];
+        }
+        groupedStudents[student.grade].push({
+          id: student.id,
+          name: student.name,
+          grade: student.grade,
+        });
+      });
+
+      Object.keys(groupedStudents).forEach((grade) => {
+        groupedStudents[grade].sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+      });
+
+      setStudents(groupedStudents);
+
+      // 出席状況の取得と更新
+      for (const grade in groupedStudents) {
+        for (const student of groupedStudents[grade]) {
+          const { data: attendanceData, error: attendanceError } = await supabaseClient
+            .from('attendance')
+            .select('*')
+            .eq('student_id', student.id)
+            .order('timestamp', { ascending: false })
+            .limit(1);
+
+          if (attendanceError) {
+            console.error('Error fetching attendance:', attendanceError);
+            continue;
+          }
+
+          if (attendanceData && attendanceData.length > 0) {
+            setAttendanceStatus(prev => ({
+              ...prev,
+              [student.id]: {
+                status: attendanceData[0].status as '出勤' | '退勤',
+                timestamp: attendanceData[0].timestamp
+              }
+            }));
+          }
+        }
+      }
+    };
+
+    // 初回実行
+    initialFetch();
+
+    // 10秒ごとに更新
+    const intervalId = setInterval(() => {
+      initialFetch();
+    }, 10000);
+
+    // クリーンアップ
+    return () => clearInterval(intervalId);
+  }, []);
+
+  // 選択された学生の詳細データ更新
+  useEffect(() => {
+    if (!selectedStudentId) return;
+
+    const fetchStudentDetails = async () => {
+      await fetchAttendanceData(selectedStudentId);
+      await fetchTodayAttendance(selectedStudentId);
+    };
+
+    // 初回実行
+    fetchStudentDetails();
+
+    // 10秒ごとに更新
+    const intervalId = setInterval(() => {
+      fetchStudentDetails();
+    }, 10000);
+
+    // クリーンアップ
+    return () => clearInterval(intervalId);
+  }, [selectedStudentId]);
+
+  // 学生一覧と出退勤状態を更新するuseEffect
+  useEffect(() => {
+    const fetchStudentData = async () => {
+      const supabaseClient = useSupabaseClient();
+
+      // 学生データの取得
+      const { data: studentsData, error } = await supabaseClient
+        .from('students')
+        .select('*');
+
+      if (error) {
+        console.error('Error fetching students:', error);
+        return;
+      }
+
+      const groupedStudents: { [grade: string]: Student[] } = { M2: [], M1: [], B4: [] };
+      studentsData.forEach((student) => {
+        if (!groupedStudents[student.grade]) {
+          groupedStudents[student.grade] = [];
+        }
+        groupedStudents[student.grade].push({
+          id: student.id,
+          name: student.name,
+          grade: student.grade,
+        });
+      });
+
+      Object.keys(groupedStudents).forEach((grade) => {
+        groupedStudents[grade].sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+      });
+
+      setStudents(groupedStudents);
+    };
+
+    // 初回データ取得
+    fetchStudentData();
+
+    // 定期更新
+    const studentListIntervalId = setInterval(() => {
+      fetchStudentData();
+    }, REFRESH_INTERVAL.STUDENT_LIST);
+
+    // クリーンアップ
+    return () => {
+      clearInterval(studentListIntervalId);
+    };
+  }, [students]);
+
+  // 選択された学生の詳細データを更新するuseEffect
+  useEffect(() => {
+    if (!selectedStudentId) return;
+
+    const fetchStudentDetails = async () => {
+      await fetchAttendanceData(selectedStudentId);
+      await fetchTodayAttendance(selectedStudentId);
+    };
+
+    // 初回データ取得
+    fetchStudentDetails();
+
+    // 定期更新
+    const intervalId = setInterval(() => {
+      fetchStudentDetails();
+    }, REFRESH_INTERVAL.STATISTICS);
+
+    // クリーンアップ
+    return () => clearInterval(intervalId);
+  }, [selectedStudentId]);
 
   return (
     <Box textAlign="left" pt={0} height="100%" overflowY="auto" maxHeight="90vh">
