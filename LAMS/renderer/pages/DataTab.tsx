@@ -294,20 +294,19 @@ const DataTab: React.FC = () => {
   };
 
   return (
-    <Box textAlign="left" p={4}>
-      <Flex direction="column">
-        {selectedStudentId && (
-          <Box>
-            <Grid templateColumns="repeat(auto-fit, minmax(400px, 1fr))" gap={10}>
-              <GridItem>
+    <Box textAlign="left" p={4} height="100%">
+      <Grid templateColumns="3fr 2fr" gap={6} height="100%">
+        <GridItem height="100%">
+          <Flex direction="column" height="100%">
+            {selectedStudentId && (
+              <Box>
                 <Heading as="h3" size="md" mt={4}>
                   週ごとの出勤時間
                 </Heading>
-                <ResponsiveContainer width="100%" height={300}>
+                <ResponsiveContainer width="100%" height={200}>
                   <BarChart data={weeklyData.length > 0 ? weeklyData : []}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="day" //label={{ value: '曜日', position: 'insideBottom', offset: 0 }}
-                     />
+                    <XAxis dataKey="day" />
                     <YAxis tickFormatter={(value: number) => {
                       if (value >= 1) {
                         return `${value.toFixed(0)} 時間`;
@@ -316,8 +315,7 @@ const DataTab: React.FC = () => {
                       } else {
                         return `${(value * 60 * 60).toFixed(0)} 秒`;
                       }
-                    }} //label={{ value: '出勤時間', angle: -90, position: 'insideLeft', offset: 0 }}
-                    />
+                    }} />
                     <Tooltip formatter={(value: number) => {
                       if (value >= 1) {
                         return `${value.toFixed(2)} 時間`;
@@ -331,17 +329,14 @@ const DataTab: React.FC = () => {
                     <Bar dataKey="出勤時間" fill="#8884d8" />
                   </BarChart>
                 </ResponsiveContainer>
-              </GridItem>
 
-              <GridItem>
                 <Heading as="h3" size="md" mt={4}>
                   月ごとの出勤時間
                 </Heading>
-                <ResponsiveContainer width="100%" height={300}>
+                <ResponsiveContainer width="100%" height={200}>
                   <BarChart data={monthlyData.length > 0 ? monthlyData : []}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="day" //label={{ value: '日', position: 'insideBottom', offset: 0 }}
-                     />
+                    <XAxis dataKey="day" />
                     <YAxis tickFormatter={(value: number) => {
                       if (value >= 1) {
                         return `${value.toFixed(0)} 時間`;
@@ -350,8 +345,7 @@ const DataTab: React.FC = () => {
                       } else {
                         return `${(value * 60 * 60).toFixed(0)} 秒`;
                       }
-                    }} //label={{ value: '出勤時間', angle: -90, position: 'insideLeft', offset: 0 }}
-                    />
+                    }} />
                     <Tooltip formatter={(value: number) => {
                       if (value >= 1) {
                         return `${value.toFixed(2)} 時間`;
@@ -365,17 +359,14 @@ const DataTab: React.FC = () => {
                     <Bar dataKey="出勤時間" fill="#8884d8" />
                   </BarChart>
                 </ResponsiveContainer>
-              </GridItem>
 
-              <GridItem>
                 <Heading as="h3" size="md" mt={4}>
                   年ごとの出勤時間
                 </Heading>
-                <ResponsiveContainer width="100%" height={300}>
+                <ResponsiveContainer width="100%" height={200}>
                   <BarChart data={yearlyData.length > 0 ? yearlyData : []}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" //label={{ value: '月', position: 'insideBottom', offset: 0 }}
-                     />
+                    <XAxis dataKey="month" />
                     <YAxis tickFormatter={(value: number) => {
                       if (value >= 1) {
                         return `${value.toFixed(0)} 時間`;
@@ -384,8 +375,7 @@ const DataTab: React.FC = () => {
                       } else {
                         return `${(value * 60 * 60).toFixed(0)} 秒`;
                       }
-                    }} //label={{ value: '出勤時間', angle: -90, position: 'insideLeft', offset: 0 }}
-                    />
+                    }} />
                     <Tooltip formatter={(value: number) => {
                       if (value >= 1) {
                         return `${value.toFixed(2)} 時間`;
@@ -399,57 +389,68 @@ const DataTab: React.FC = () => {
                     <Bar dataKey="出勤時間" fill="#8884d8" />
                   </BarChart>
                 </ResponsiveContainer>
-              </GridItem>
-            </Grid>
+              </Box>
+            )}
+          </Flex>
+        </GridItem>
+
+        <GridItem height="100%">
+          <Box 
+            bg="white" 
+            zIndex={1}
+            overflowY="auto"
+            maxHeight="80vh" // 画面の高さに合わせて調整
+          >
+            {['M2', 'M1', 'B4'].map((section) => (
+              <Box key={section} mt={4}>
+                <Heading as="h3" size="md" fontSize={fontSize}>
+                  {section}
+                  <IconButton
+                    aria-label={`Add student to ${section}`}
+                    icon={<AddIcon />}
+                    size="sm"
+                    ml={2}
+                    onClick={() => handleAddStudent(section)}
+                  />
+                  <IconButton
+                    aria-label={`Remove student from ${section}`}
+                    icon={<MinusIcon />}
+                    size="sm"
+                    ml={2}
+                    onClick={() => handleRemoveStudent(section)}
+                  />
+                </Heading>
+                <Divider my={2} />
+                <Wrap maxWidth="none" border={`1px solid ${theme.colors.gray[200]}`} borderRadius="md" p={2} spacing={2}>
+                  {students[section]?.map((student, index) => (
+                    <WrapItem key={`${student.id}-${index}`} flexBasis="calc(100% / 10)">
+                      <Box
+                        borderWidth="1px"
+                        borderRadius="md"
+                        p={2}
+                        boxShadow="sm"
+                        fontSize="xl"
+                        width="100%"
+                        textAlign="center"
+                        margin={0}
+                        borderColor={selectedStudentId === student.id ? 'blue.500' : 'gray.200'}
+                        position="relative"
+                        cursor="pointer"
+                        onClick={() => setSelectedStudentId(student.id)}
+                        whiteSpace="nowrap"
+                        overflow="hidden"
+                        textOverflow="ellipsis"
+                      >
+                        {student.name}
+                      </Box>
+                    </WrapItem>
+                  ))}
+                </Wrap>
+              </Box>
+            ))}
           </Box>
-        )}
-        <Box position="sticky" top={0} bg="white" zIndex={1}>
-          {['M2', 'M1', 'B4'].map((section) => (
-            <Box key={section} mt={4}>
-              <Heading as="h3" size="md" fontSize={fontSize}>
-                {section}
-                <IconButton
-                  aria-label={`Add student to ${section}`}
-                  icon={<AddIcon />}
-                  size="sm"
-                  ml={2}
-                  onClick={() => handleAddStudent(section)}
-                />
-                <IconButton
-                  aria-label={`Remove student from ${section}`}
-                  icon={<MinusIcon />}
-                  size="sm"
-                  ml={2}
-                  onClick={() => handleRemoveStudent(section)}
-                />
-              </Heading>
-              <Divider my={2} /> {/* Dividerを追加 */}
-              <Wrap maxWidth="none" border={`1px solid ${theme.colors.gray[200]}`} borderRadius="md" p={2} spacing={2}>
-                {students[section]?.map((student, index) => (
-                  <WrapItem key={`${student.id}-${index}`} flexBasis="calc(100% / 5)">
-                    <Box
-                      borderWidth="1px"
-                      borderRadius="md"
-                      p={2}
-                      boxShadow="sm"
-                      fontSize={fontSize} // 学生名の文字サイズを調整
-                      width="100%"
-                      textAlign="center"
-                      margin={0}
-                      borderColor={selectedStudentId === student.id ? 'blue.500' : 'gray.200'}
-                      position="relative" // 相対位置指定
-                      cursor="pointer"
-                      onClick={() => setSelectedStudentId(student.id)}
-                    >
-                      {student.name}
-                    </Box>
-                  </WrapItem>
-                ))}
-              </Wrap>
-            </Box>
-          ))}
-        </Box>
-      </Flex>
+        </GridItem>
+      </Grid>
     </Box>
   );
 };
