@@ -154,24 +154,22 @@ const MainTab: React.FC = () => {
     if (weeklyError) {
       console.error('Error fetching weekly attendance:', weeklyError);
     } else {
-      // 出勤回数を計算
-      const weeklyCount = weeklyData ? weeklyData.length : 0;
+      // 出勤日数を計算
+      const weeklyAttendedDays = new Set(weeklyData.map(record => new Date(record.timestamp).toLocaleDateString()));
+      const weeklyCount = weeklyAttendedDays.size;
       setWeeklyAttendance(weeklyCount);
 
       // 合計時間を計算
       let weeklyTime = 0;
-      if (weeklyData) {
-        weeklyTime = weeklyData.reduce((total, record) => {
-          const timestamp = new Date(record.timestamp).getTime();
-          return total + timestamp;
-        }, 0);
-        if (weeklyCount > 0) {
-          weeklyTime = weeklyTime / weeklyCount;
-          weeklyTime = new Date().getTime() - weeklyTime;
-          weeklyTime = weeklyTime / (1000 * 60 * 60);
-        } else {
-          weeklyTime = 0;
+      if (weeklyData && weeklyData.length > 1) {
+        for (let i = 0; i < weeklyData.length - 1; i++) {
+          const checkIn = new Date(weeklyData[i].timestamp).getTime();
+          const checkOut = new Date(weeklyData[i + 1].timestamp).getTime();
+          weeklyTime += (checkOut - checkIn);
         }
+        weeklyTime = weeklyTime / (1000 * 60 * 60);
+      } else {
+        weeklyTime = 0;
       }
       setWeeklyTotalTime(weeklyTime);
 
@@ -202,24 +200,22 @@ const MainTab: React.FC = () => {
     if (monthlyError) {
       console.error('Error fetching monthly attendance:', monthlyError);
     } else {
-      // 出勤回数を計算
-      const monthlyCount = monthlyData ? monthlyData.length : 0;
+      // 出勤日数を計算
+      const monthlyAttendedDays = new Set(monthlyData.map(record => new Date(record.timestamp).toLocaleDateString()));
+      const monthlyCount = monthlyAttendedDays.size;
       setMonthlyAttendance(monthlyCount);
 
       // 合計時間を計算
       let monthlyTime = 0;
-      if (monthlyData) {
-        monthlyTime = monthlyData.reduce((total, record) => {
-          const timestamp = new Date(record.timestamp).getTime();
-          return total + timestamp;
-        }, 0);
-        if (monthlyCount > 0) {
-          monthlyTime = monthlyTime / monthlyCount;
-          monthlyTime = new Date().getTime() - monthlyTime;
-          monthlyTime = monthlyTime / (1000 * 60 * 60);
-        } else {
-          monthlyTime = 0;
+       if (monthlyData && monthlyData.length > 1) {
+        for (let i = 0; i < monthlyData.length - 1; i++) {
+          const checkIn = new Date(monthlyData[i].timestamp).getTime();
+          const checkOut = new Date(monthlyData[i + 1].timestamp).getTime();
+          monthlyTime += (checkOut - checkIn);
         }
+        monthlyTime = monthlyTime / (1000 * 60 * 60);
+      } else {
+        monthlyTime = 0;
       }
       setMonthlyTotalTime(monthlyTime);
     }
@@ -237,25 +233,24 @@ const MainTab: React.FC = () => {
     if (yearlyError) {
       console.error('Error fetching yearly attendance:', yearlyError);
     } else {
-      // 出勤回数を計算
-      const yearlyCount = yearlyData ? yearlyData.length : 0;
-      setYearlyAttendance(yearlyCount);
+      // 出勤日数を計算
+      const yearlyAttendedDays = new Set(yearlyData.map(record => new Date(record.timestamp).toLocaleDateString()));
+      const yearlyCount = yearlyAttendedDays.size;
 
       // 合計時間を計算
       let yearlyTime = 0;
-      if (yearlyData) {
-        yearlyTime = yearlyData.reduce((total, record) => {
-          const timestamp = new Date(record.timestamp).getTime();
-          return total + timestamp;
-        }, 0);
-        if (yearlyCount > 0) {
-          yearlyTime = yearlyTime / yearlyCount;
-          yearlyTime = new Date().getTime() - yearlyTime;
-          yearlyTime = yearlyTime / (1000 * 60 * 60);
-        } else {
-          yearlyTime = 0;
+       if (yearlyData && yearlyData.length > 1) {
+        for (let i = 0; i < yearlyData.length - 1; i++) {
+          const checkIn = new Date(yearlyData[i].timestamp).getTime();
+          const checkOut = new Date(yearlyData[i + 1].timestamp).getTime();
+          yearlyTime += (checkOut - checkIn);
         }
+        yearlyTime = yearlyTime / (1000 * 60 * 60);
+      } else {
+        yearlyTime = 0;
       }
+
+      setYearlyAttendance(yearlyCount);
       setYearlyTotalTime(yearlyTime);
     }
   };
@@ -471,13 +466,13 @@ const MainTab: React.FC = () => {
               </Flex>
               <Box pl={1}>
                 <Text fontSize="sm" mb={1}>
-                  今週の出勤: {weeklyAttendance} 回, {isNaN(weeklyTotalTime) ? 0 : Math.floor(weeklyTotalTime)} 時間
+                  今週の出勤: {weeklyAttendance} 日, {isNaN(weeklyTotalTime) ? 0 : (weeklyAttendance > 0 ? Math.floor(weeklyTotalTime) : 0)} 時間
                 </Text>
                 <Text fontSize="sm" mb={1}>
-                  今月の出勤: {monthlyAttendance} 回, {isNaN(monthlyTotalTime) ? 0 : Math.floor(monthlyTotalTime)} 時間
+                  今月の出勤: {monthlyAttendance} 日, {isNaN(monthlyTotalTime) ? 0 : (monthlyAttendance > 0 ? Math.floor(monthlyTotalTime) : 0)} 時間
                 </Text>
                 <Text fontSize="sm" mb={1}>
-                  今年の出勤: {yearlyAttendance} 回, {isNaN(yearlyTotalTime) ? 0 : Math.floor(yearlyTotalTime)} 時間
+                  今年の出勤: {yearlyAttendance} 日, {isNaN(yearlyTotalTime) ? 0 : (yearlyAttendance > 0 ? Math.floor(yearlyTotalTime) : 0)} 時間
                 </Text>
               </Box>
             </Box>
