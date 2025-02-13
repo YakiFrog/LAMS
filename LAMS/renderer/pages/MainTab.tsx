@@ -110,7 +110,9 @@ const MainTab: React.FC = () => {
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const toast = useToast();
-  const [attendanceStatus, setAttendanceStatus] = useState<{ [studentId: string]: '出勤' | '退勤' | null }>({});
+  const [attendanceStatus, setAttendanceStatus] = useState<{
+    [studentId: string]: { status: '出勤' | '退勤'; timestamp: string } | null;
+  }>({});
   const [weeklyAttendance, setWeeklyAttendance] = useState<number>(0);
   const [monthlyAttendance, setMonthlyAttendance] = useState<number>(0);
   const [yearlyAttendance, setYearlyAttendance] = useState<number>(0);
@@ -120,6 +122,10 @@ const MainTab: React.FC = () => {
   const [attendedDays, setAttendedDays] = useState<number[]>([]);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isClient, setIsClient] = useState(false);
+  const [todayAttendance, setTodayAttendance] = useState<{
+    checkIn: string | null;
+    checkOut: string | null;
+  }>({ checkIn: null, checkOut: null });
 
   useEffect(() => {
     setIsClient(true);
@@ -171,15 +177,18 @@ const MainTab: React.FC = () => {
   useEffect(() => {
     const fetchInitialAttendance = async () => {
       const supabaseClient = useSupabaseClient();
-
-      const initialStatus: { [studentId: string]: '出勤' | '退勤' | null } = {};
+      const initialStatus: { [studentId: string]: { status: '出勤' | '退勤'; timestamp: string } | null } = {};
 
       for (const grade in students) {
         for (const student of students[grade]) {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+
           const { data: attendanceData, error } = await supabaseClient
             .from('attendance')
             .select('*')
             .eq('student_id', student.id)
+            .gte('timestamp', today.toISOString())
             .order('timestamp', { ascending: false })
             .limit(1);
 
@@ -190,16 +199,10 @@ const MainTab: React.FC = () => {
 
           if (attendanceData && attendanceData.length > 0) {
             const lastAttendance = attendanceData[0];
-            const lastAttendanceTime = new Date(lastAttendance.timestamp);
-            const now = new Date();
-
-            const isSameDay = now.toLocaleDateString() === lastAttendanceTime.toLocaleDateString();
-
-            if (isSameDay) {
-              initialStatus[student.id] = lastAttendance.status as '出勤' | '退勤';
-            } else {
-              initialStatus[student.id] = null;
-            }
+            initialStatus[student.id] = {
+              status: lastAttendance.status as '出勤' | '退勤',
+              timestamp: lastAttendance.timestamp
+            };
           } else {
             initialStatus[student.id] = null;
           }
@@ -246,17 +249,6 @@ const MainTab: React.FC = () => {
         weeklyTime = 0;
       }
       setWeeklyTotalTime(weeklyTime);
-
-      const days: number[] = [];
-      if (weeklyData) {
-        weeklyData.forEach(record => {
-          const day = new Date(record.timestamp).getDay();
-          if (!days.includes(day)) {
-            days.push(day);
-          }
-        });
-      }
-      setAttendedDays(days);
     }
 
     const startOfMonth = new Date();
@@ -327,6 +319,49 @@ const MainTab: React.FC = () => {
     }
   };
 
+  const fetchTodayAttendance = async (studentId: string) => {
+    const supabase = useSupabaseClient();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const { data, error } = await supabase
+      .from('attendance')
+      .select('*')
+      .eq('student_id', studentId)
+      .gte('timestamp', today.toISOString())
+      .order('timestamp', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching today\'s attendance:', error);
+      return;
+    }
+
+    let checkIn = null;
+    let checkOut = null;
+
+    // 同じ日のデータのみを処理
+    const todayStr = new Date().toLocaleDateString('ja-JP');
+    data.forEach(record => {
+      const recordDate = new Date(record.timestamp).toLocaleDateString('ja-JP');
+      if (recordDate === todayStr) {
+        const timestamp = new Date(record.timestamp);
+        timestamp.setHours(timestamp.getHours() - 9);
+        const localizedTime = timestamp.toLocaleTimeString('ja-JP', {
+          hour: '2-digit',
+          minute: '2-digit',
+        });
+        if (record.status === '出勤' && !checkIn) {
+          checkIn = localizedTime;
+        }
+        if (record.status === '退勤') {
+          checkOut = localizedTime;
+        }
+      }
+    });
+
+    setTodayAttendance({ checkIn, checkOut });
+  };
+
   const handleAddStudent = useCallback((grade: string) => {
     setStudents((prevStudents) => {
       const currentStudents = prevStudents[grade] || [];
@@ -359,6 +394,7 @@ const MainTab: React.FC = () => {
     setSelectedStudentId(student.id);
     setIsModalOpen(true);
     fetchAttendanceData(student.id);
+    fetchTodayAttendance(student.id);
   };
 
   const handleCloseModal = () => {
@@ -369,7 +405,7 @@ const MainTab: React.FC = () => {
   const handleAttendance = async (status: '出勤' | '退勤') => {
     if (!selectedStudentId) return;
 
-    if (status === '退勤' && attendanceStatus[selectedStudentId] !== '出勤') {
+    if (status === '退勤' && attendanceStatus[selectedStudentId]?.status !== '出勤') {
       toast({
         title: 'Cannot Record 退勤',
         description: `This student is not currently marked as 出勤.`,
@@ -382,20 +418,32 @@ const MainTab: React.FC = () => {
 
     try {
       const supabase = useSupabaseClient();
+      const now = new Date();
+      const timestamp = now.toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' });
       const { error } = await supabase
         .from('attendance')
         .insert([{
           student_id: selectedStudentId,
           status,
-          timestamp: new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })
+          timestamp
         }]);
 
       if (error) throw error;
 
-      setAttendanceStatus(prev => ({
-        ...prev,
-        [selectedStudentId]: status
-      }));
+      // 当日の日付を取得
+      const today = new Date().toLocaleDateString('ja-JP');
+
+      // 新しいattendanceStatusを更新
+      setAttendanceStatus(prev => {
+        const newStatus = {
+          ...prev,
+          [selectedStudentId]: { status, timestamp }
+        };
+        return newStatus;
+      });
+
+      // 本日の出勤データを再取得
+      fetchTodayAttendance(selectedStudentId);
 
       toast({
         title: '記録完了',
@@ -428,20 +476,20 @@ const MainTab: React.FC = () => {
         const supabaseClient = useSupabaseClient();
 
         for (const studentId in attendanceStatus) {
-          if (attendanceStatus[studentId] === '出勤') {
+          if (attendanceStatus[studentId]?.status === '出勤') {
             await supabaseClient
               .from('attendance')
               .insert([
                 {
                   student_id: studentId,
                   status: '退勤',
-                  timestamp: new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })
+                  timestamp: new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' }) // 修正: 東京ローカル時間を文字列として記録
                 },
               ]);
 
             setAttendanceStatus((prevStatus) => ({
               ...prevStatus,
-              [studentId]: '退勤',
+              [studentId]: { status: '退勤', timestamp: new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' }) } // 修正: 東京ローカル時間を文字列として記録
             }));
           }
         }
@@ -485,8 +533,8 @@ const MainTab: React.FC = () => {
                   width="100%" minWidth="180px" textAlign="center" margin={0} cursor="pointer"
                   onClick={() => handleStudentClick(student)}
                   borderColor={
-                    attendanceStatus[student.id] === '退勤' ? 'red.500' :
-                      attendanceStatus[student.id] === '出勤' ? 'blue.500' : 'gray.200'
+                    attendanceStatus[student.id]?.status === '退勤' ? 'red.500' :
+                      attendanceStatus[student.id]?.status === '出勤' ? 'blue.500' : 'gray.200'
                   }
                   position="relative"
                 >
@@ -496,10 +544,11 @@ const MainTab: React.FC = () => {
                   {attendanceStatus[student.id] && (
                     <Text
                       position="absolute" bottom="0" right="0" fontSize="sm"
-                      color={attendanceStatus[student.id] === '退勤' ? 'red.500' : 'blue.500'}
+                      color={attendanceStatus[student.id]?.status === '退勤' ? 'red.500' : 'blue.500'}
                       padding="0.1rem 0.3rem"
+                      fontWeight="bold"
                     >
-                      {attendanceStatus[student.id]}
+                      {attendanceStatus[student.id]?.status}
                     </Text>
                   )}
                 </Box>
@@ -522,7 +571,15 @@ const MainTab: React.FC = () => {
             <Text p={2} pl={1} fontSize="xs" mb={4}>
               Student ID: {selectedStudentId}
             </Text>
-            <Box borderWidth="1px" borderRadius="md" p={2} boxShadow="sm">
+            <Flex justify="space-around" mb={2} fontWeight="bold" fontSize="xl">
+                <Box>
+                  出勤: {todayAttendance.checkIn || '未出勤'}
+                </Box>
+                <Box>
+                  退勤: {todayAttendance.checkOut || '未退勤'}
+                </Box>
+              </Flex>
+            <Box borderWidth="1px" borderRadius="xl" p={2} boxShadow="sm">
               <Flex justify="space-around" mb={2}>
                 {['月', '火', '水', '木', '金', '土', '日'].map((day, index) => (
                   <Box
@@ -548,11 +605,15 @@ const MainTab: React.FC = () => {
               </Box>
             </Box>
           </ModalBody>
-          <Flex justify="center" pb={4} width="86%" margin="auto">
-            <Button colorScheme="blue" mr={3} onClick={() => handleAttendance('出勤')} width="50%">
+          <Flex justify="center" pb={4} width="86%" margin="auto" pt={4}>
+            <Button colorScheme="blue" mr={3} onClick={() => {
+              handleAttendance('出勤');
+            }} width="50%">
               出勤
             </Button>
-            <Button colorScheme="red" onClick={() => handleAttendance('退勤')} width="50%">
+            <Button colorScheme="red" onClick={() => {
+              handleAttendance('退勤');
+            }} width="50%">
               退勤
             </Button>
           </Flex>

@@ -61,8 +61,8 @@ const Home: React.FC = () => {
     overflow: 'hidden', // Add overflow hidden
     fontSize: isLargerThan480 ? FONT_SIZES.content.large : FONT_SIZES.content.small, // 16px -> 1rem, 10px -> 0.875rem
     boxShadow: '0 0.25rem 0.75rem rgba(0, 0, 0, 0.2)', // 4px -> 0.25rem, 12px -> 0.75rem
-    borderRadius: '10px', // 角を丸くする
     padding: '10px', // Add padding around the content
+    borderRadius: 'lg', // Add border radius
   };
 
   const tabsStyle = {
@@ -104,13 +104,13 @@ const Home: React.FC = () => {
           </TabList>
 
           <TabPanels style={tabPanelsStyle}>
-            <TabPanel border="1px solid" borderRadius="md" marginTop={2} height="98%">
+            <TabPanel border="1px solid gray" borderRadius="2xl" marginTop={2} height="98%">
               <MainTab />
             </TabPanel>
-            <TabPanel border="1px solid" borderRadius="md" marginTop={2} height="98%" overflow="auto">
+            <TabPanel border="1px solid gray" borderRadius="2xl" marginTop={2} height="98%">
               <DataTab />
             </TabPanel>
-            <TabPanel border="1px solid" borderRadius="md" marginTop={2} height="98%">
+            <TabPanel border="1px solid gray" borderRadius="2xl" marginTop={2} height="98%">
               <AdminTab />
             </TabPanel>
           </TabPanels>
