@@ -7,7 +7,7 @@ import { Box, Heading, Text, Wrap, WrapItem, Divider, useTheme, IconButton,
   ModalBody,
   ModalCloseButton,
   Button,
-  useToast, } from '@chakra-ui/react';
+  useToast, Flex } from '@chakra-ui/react';
 import { createClient } from '@supabase/supabase-js';
 import { AddIcon, MinusIcon } from '@chakra-ui/icons';
 
@@ -290,20 +290,29 @@ const MainTab: React.FC = () => {
 
       <Modal isOpen={isModalOpen} onClose={handleCloseModal} isCentered>
         <ModalOverlay />
-        <ModalContent>
+        <ModalContent
+          style={{
+            maxWidth: '300px', // モーダルの最大幅を設定
+            width: '100%',
+            aspectRatio: '1 / 1', // 1:1のアスペクト比を設定
+          }}
+        >
           <ModalHeader>{students.M2.find(s => s.id === selectedStudent)?.name ||
             students.M1.find(s => s.id === selectedStudent)?.name ||
             students.B4.find(s => s.id === selectedStudent)?.name}</ModalHeader>
           <ModalCloseButton />
           <ModalBody>
-            <Text mb={4}>Student ID: {selectedStudent}</Text>
+            <Text mb={4} fontSize="xs"
+            >Student ID: {selectedStudent}</Text>
+          </ModalBody>
+          <Flex justify="center" pb={4}>
             <Button colorScheme="blue" mr={3} onClick={() => handleAttendance('出勤')}>
               出勤
             </Button>
             <Button colorScheme="red" onClick={() => handleAttendance('退勤')}>
               退勤
             </Button>
-          </ModalBody>
+          </Flex>
         </ModalContent>
       </Modal>
     </Box>
