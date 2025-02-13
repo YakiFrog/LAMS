@@ -1,15 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Box, Heading, Text, Wrap, WrapItem, Divider, useTheme, IconButton,
-  Modal,
-  ModalOverlay,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalCloseButton,
-  Button,
-  useToast, Flex } from '@chakra-ui/react';
+import {
+  Box, Heading, Text, Wrap, WrapItem, Divider, useTheme,
+  Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalCloseButton,
+  Button, useToast, Flex
+} from '@chakra-ui/react';
 import { createClient } from '@supabase/supabase-js';
-import { AddIcon, MinusIcon } from '@chakra-ui/icons';
 
 interface Student {
   id: string;
@@ -19,23 +14,15 @@ interface Student {
 
 const MainTab: React.FC = () => {
   const [students, setStudents] = useState<{ [grade: string]: Student[] }>({
-    M2: [],
-    M1: [],
-    B4: [],
+    M2: [], M1: [], B4: [],
   });
-  const fontSize = '2xl'; // 文字サイズを調整するための変数（文字サイズは 'xs', 'sm', 'md', 'lg', 'xl', '2xl', '3xl', '4xl', '5xl', '6xl' のいずれか）
+  const fontSize = '2xl';
   const theme = useTheme();
-  const fontSizePixel = theme.fontSizes[fontSize]; // fontSizeに対応するピクセル値を取得
-
-  // 5文字分の幅を計算 (例: 1文字あたりfontSizePixelの0.8倍)
-  const width = parseFloat(fontSizePixel) * 5 * 0.8;
-
-  const [selectedStudent, setSelectedStudent] = useState<string | null>(null);
+  const fontSizePixel = theme.fontSizes[fontSize];
+  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const toast = useToast();
-  const [attendanceStatus, setAttendanceStatus] = useState<{ [studentId: string]: '出勤' | '退勤' | null }>(
-    {}
-  );
+  const [attendanceStatus, setAttendanceStatus] = useState<{ [studentId: string]: '出勤' | '退勤' | null }>({});
   const [weeklyAttendance, setWeeklyAttendance] = useState<number>(0);
   const [monthlyAttendance, setMonthlyAttendance] = useState<number>(0);
   const [yearlyAttendance, setYearlyAttendance] = useState<number>(0);
@@ -43,6 +30,15 @@ const MainTab: React.FC = () => {
   const [monthlyTotalTime, setMonthlyTotalTime] = useState<number>(0);
   const [yearlyTotalTime, setYearlyTotalTime] = useState<number>(0);
   const [attendedDays, setAttendedDays] = useState<number[]>([]);
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -65,7 +61,6 @@ const MainTab: React.FC = () => {
         return;
       }
 
-      // グレードごとに学生をグループ化
       const groupedStudents: { [grade: string]: Student[] } = { M2: [], M1: [], B4: [] };
       studentsData.forEach((student) => {
         if (!groupedStudents[student.grade]) {
@@ -78,7 +73,6 @@ const MainTab: React.FC = () => {
         });
       });
 
-      // グレードごとに学生を名前でソート
       Object.keys(groupedStudents).forEach((grade) => {
         groupedStudents[grade].sort((a, b) => a.name.localeCompare(b.name, 'ja'));
       });
@@ -140,12 +134,10 @@ const MainTab: React.FC = () => {
 
     const supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
 
-    // 今週の出勤データを取得
     const startOfWeek = new Date();
-    // startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay()); // 今週の日曜日に設定
-    const dayOfWeek = startOfWeek.getDay(); // 0 (日) から 6 (土) の値
-    const mondayOffset = (dayOfWeek === 0 ? 6 : dayOfWeek - 1); // 月曜日を基準にするオフセット
-    startOfWeek.setDate(startOfWeek.getDate() - mondayOffset); // 今週の月曜日に設定
+    const dayOfWeek = startOfWeek.getDay();
+    const mondayOffset = (dayOfWeek === 0 ? 6 : dayOfWeek - 1);
+    startOfWeek.setDate(startOfWeek.getDate() - mondayOffset);
     startOfWeek.setHours(0, 0, 0, 0);
 
     const { data: weeklyData, error: weeklyError } = await supabaseClient
@@ -157,12 +149,10 @@ const MainTab: React.FC = () => {
     if (weeklyError) {
       console.error('Error fetching weekly attendance:', weeklyError);
     } else {
-      // 出勤日数を計算
       const weeklyAttendedDays = new Set(weeklyData.map(record => new Date(record.timestamp).toLocaleDateString()));
       const weeklyCount = weeklyAttendedDays.size;
       setWeeklyAttendance(weeklyCount);
 
-      // 合計時間を計算
       let weeklyTime = 0;
       if (weeklyData && weeklyData.length > 1) {
         for (let i = 0; i < weeklyData.length - 1; i++) {
@@ -176,7 +166,6 @@ const MainTab: React.FC = () => {
       }
       setWeeklyTotalTime(weeklyTime);
 
-      // 出勤した曜日を記録
       const days: number[] = [];
       if (weeklyData) {
         weeklyData.forEach(record => {
@@ -189,9 +178,8 @@ const MainTab: React.FC = () => {
       setAttendedDays(days);
     }
 
-    // 今月の出勤データを取得
     const startOfMonth = new Date();
-    startOfMonth.setDate(1); // 今月の1日に設定
+    startOfMonth.setDate(1);
     startOfMonth.setHours(0, 0, 0, 0);
 
     const { data: monthlyData, error: monthlyError } = await supabaseClient
@@ -203,14 +191,12 @@ const MainTab: React.FC = () => {
     if (monthlyError) {
       console.error('Error fetching monthly attendance:', monthlyError);
     } else {
-      // 出勤日数を計算
       const monthlyAttendedDays = new Set(monthlyData.map(record => new Date(record.timestamp).toLocaleDateString()));
       const monthlyCount = monthlyAttendedDays.size;
       setMonthlyAttendance(monthlyCount);
 
-      // 合計時間を計算
       let monthlyTime = 0;
-       if (monthlyData && monthlyData.length > 1) {
+      if (monthlyData && monthlyData.length > 1) {
         for (let i = 0; i < monthlyData.length - 1; i++) {
           const checkIn = new Date(monthlyData[i].timestamp).getTime();
           const checkOut = new Date(monthlyData[i + 1].timestamp).getTime();
@@ -223,9 +209,8 @@ const MainTab: React.FC = () => {
       setMonthlyTotalTime(monthlyTime);
     }
 
-    // 今年の出勤データを取得
     const startOfYear = new Date();
-    startOfYear.setMonth(0, 1); // 今年の1月1日に設定
+    startOfYear.setMonth(0, 1);
     startOfYear.setHours(0, 0, 0, 0);
 
     const { data: yearlyData, error: yearlyError } = await supabaseClient
@@ -236,13 +221,11 @@ const MainTab: React.FC = () => {
     if (yearlyError) {
       console.error('Error fetching yearly attendance:', yearlyError);
     } else {
-      // 出勤日数を計算
       const yearlyAttendedDays = new Set(yearlyData.map(record => new Date(record.timestamp).toLocaleDateString()));
       const yearlyCount = yearlyAttendedDays.size;
 
-      // 合計時間を計算
       let yearlyTime = 0;
-       if (yearlyData && yearlyData.length > 1) {
+      if (yearlyData && yearlyData.length > 1) {
         for (let i = 0; i < yearlyData.length - 1; i++) {
           const checkIn = new Date(yearlyData[i].timestamp).getTime();
           const checkOut = new Date(yearlyData[i + 1].timestamp).getTime();
@@ -262,8 +245,7 @@ const MainTab: React.FC = () => {
     setStudents((prevStudents) => {
       const currentStudents = prevStudents[grade] || [];
       const newStudentName = `学生${currentStudents.length + 1}`;
-      // 新しい学生のIDを生成するロジックが必要です (例: UUIDの生成)
-      const newStudentId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15); // これはあくまで例です
+      const newStudentId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
       const newStudent: Student = {
         id: newStudentId,
         name: newStudentName,
@@ -288,20 +270,20 @@ const MainTab: React.FC = () => {
   }, []);
 
   const handleStudentClick = (student: Student) => {
-    setSelectedStudent(student.id);
+    setSelectedStudentId(student.id);
     setIsModalOpen(true);
     fetchAttendanceData(student.id);
   };
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
-    setSelectedStudent(null);
+    setSelectedStudentId(null);
   };
 
   const handleAttendance = async (status: '出勤' | '退勤') => {
-    if (!selectedStudent) return;
+    if (!selectedStudentId) return;
 
-    if (status === '退勤' && attendanceStatus[selectedStudent] !== '出勤') {
+    if (status === '退勤' && attendanceStatus[selectedStudentId] !== '出勤') {
       toast({
         title: 'Cannot Record 退勤',
         description: `This student is not currently marked as 出勤.`,
@@ -322,12 +304,10 @@ const MainTab: React.FC = () => {
 
     const supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
 
-    const studentId = selectedStudent;
-
     const { error: attendanceError } = await supabaseClient
       .from('attendance')
       .insert([
-        { student_id: studentId, status: status, timestamp: new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' }) },
+        { student_id: selectedStudentId, status: status, timestamp: new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' }) },
       ]);
 
     if (attendanceError) {
@@ -353,11 +333,10 @@ const MainTab: React.FC = () => {
 
     setAttendanceStatus((prevStatus) => ({
       ...prevStatus,
-      [selectedStudent]: status,
+      [selectedStudentId]: status,
     }));
   };
 
-  // 自動退勤と日付リセットのための useEffect
   useEffect(() => {
     const checkAndUpdateAttendance = async () => {
       const currentTime = new Date();
@@ -369,7 +348,6 @@ const MainTab: React.FC = () => {
         const supabaseAnonKey = localStorage.getItem('supabaseAnonKey') || '';
         const supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
 
-        // 出勤中の学生を全て退勤に変更
         for (const studentId in attendanceStatus) {
           if (attendanceStatus[studentId] === '出勤') {
             await supabaseClient
@@ -398,7 +376,6 @@ const MainTab: React.FC = () => {
       }
     };
 
-    // 1分ごとにチェック
     const intervalId = setInterval(() => {
       checkAndUpdateAttendance();
       resetAttendanceStatus();
@@ -408,61 +385,39 @@ const MainTab: React.FC = () => {
   }, [attendanceStatus]);
 
   return (
-    <Box 
-      textAlign="left" 
-      pt={0} 
-      height="100%"
-      overflowY="auto"
-      maxHeight="90vh"  // 画面の高さに合わせて調整
-    >
-      {/* <Heading as="h2" size="lg" fontSize={fontSize}>
-        メインタブ
-      </Heading>
-      <Text fontSize={fontSize}>出勤・退勤操作を行います。</Text> */}
-
+    <Box textAlign="left" pt={0} height="100%" overflowY="auto" maxHeight="90vh">
       {['M2', 'M1', 'B4'].map((section) => (
         <Box key={section} mb={4}>
+          {section === 'M2' && (
+            <Text fontSize="2xl" fontWeight="extrabold" mb={3}
+              bg="gray.100" borderRadius="md" p={2} textAlign="center">
+              {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+            </Text>
+          )}
           <Heading as="h3" size="md" fontSize={fontSize}>
             {section}
           </Heading>
-          <Divider my={2} /> {/* Dividerを追加 */}
+          <Divider my={2} />
           <Wrap maxWidth="none" border={`1px solid ${theme.colors.gray[200]}`} borderRadius="md" p={2} spacing={2}>
             {students[section]?.map((student, index) => (
               <WrapItem key={`${student.id}-${index}`} flexBasis="calc(100% / 5)">
                 <Box
-                  borderWidth="1px"
-                  borderRadius="md"
-                  p={2}
-                  boxShadow="sm"
-                  fontSize="xl" // 学生名の文字サイズを調整
-                  width="100%"
-                  minWidth="180px" // Minimum widthを設定
-                  textAlign="center"
-                  margin={0}
-                  cursor="pointer" // カーソルを変更
-                  onClick={() => handleStudentClick(student)} // クリックイベントを追加
+                  borderWidth="1px" borderRadius="md" p={2} boxShadow="sm" fontSize="xl"
+                  width="100%" minWidth="180px" textAlign="center" margin={0} cursor="pointer"
+                  onClick={() => handleStudentClick(student)}
                   borderColor={
                     attendanceStatus[student.id] === '退勤' ? 'red.500' :
                       attendanceStatus[student.id] === '出勤' ? 'blue.500' : 'gray.200'
                   }
-                  position="relative" // 相対位置指定
+                  position="relative"
                 >
-                  <Text
-                    whiteSpace="nowrap"
-                    overflow="hidden"
-                    textOverflow="ellipsis"
-                  >
+                  <Text whiteSpace="nowrap" overflow="hidden" textOverflow="ellipsis">
                     {student.name}
                   </Text>
                   {attendanceStatus[student.id] && (
                     <Text
-                      position="absolute" // 絶対位置指定
-                      bottom="0"
-                      right="0"
-                      fontSize="sm"
-                      color={
-                        attendanceStatus[student.id] === '退勤' ? 'red.500' : 'blue.500'
-                      }
+                      position="absolute" bottom="0" right="0" fontSize="sm"
+                      color={attendanceStatus[student.id] === '退勤' ? 'red.500' : 'blue.500'}
                       padding="0.1rem 0.3rem"
                     >
                       {attendanceStatus[student.id]}
@@ -477,41 +432,25 @@ const MainTab: React.FC = () => {
 
       <Modal isOpen={isModalOpen} onClose={handleCloseModal} isCentered>
         <ModalOverlay />
-        <ModalContent
-          style={{
-            // maxWidth: '300px', // モーダルの最大幅を設定
-            width: '30%',
-            aspectRatio: '1 / 1', // 1:1のアスペクト比を設定
-          }}
-        >
-          <ModalHeader>{students.M2.find(s => s.id === selectedStudent)?.name ||
-            students.M1.find(s => s.id === selectedStudent)?.name ||
-            students.B4.find(s => s.id === selectedStudent)?.name}</ModalHeader>
+        <ModalContent style={{ width: '30%', aspectRatio: '1 / 1' }}>
+          <ModalHeader>
+            {students.M2.find(s => s.id === selectedStudentId)?.name ||
+              students.M1.find(s => s.id === selectedStudentId)?.name ||
+              students.B4.find(s => s.id === selectedStudentId)?.name}
+          </ModalHeader>
           <ModalCloseButton />
           <ModalBody pt={0}>
             <Text p={2} pl={1} fontSize="xs" mb={4}>
-              Student ID: {selectedStudent}
+              Student ID: {selectedStudentId}
             </Text>
-            <Box
-              borderWidth="1px"
-              borderRadius="md"
-              p={2}
-              boxShadow="sm"
-            >
+            <Box borderWidth="1px" borderRadius="md" p={2} boxShadow="sm">
               <Flex justify="space-around" mb={2}>
                 {['月', '火', '水', '木', '金', '土', '日'].map((day, index) => (
                   <Box
-                    key={day}
-                    width="30px"
-                    height="30px"
-                    borderRadius="50%"
+                    key={day} width="30px" height="30px" borderRadius="50%"
                     bg={attendedDays.includes(index + 1) ? 'blue.500' : 'gray.200'}
                     color={attendedDays.includes(index + 1) ? 'white' : 'gray.500'}
-                    display="flex"
-                    alignItems="center"
-                    justifyContent="center"
-                    fontSize="sm"
-                    m={1}
+                    display="flex" alignItems="center" justifyContent="center" fontSize="sm" m={1}
                   >
                     {day}
                   </Box>
@@ -530,14 +469,14 @@ const MainTab: React.FC = () => {
               </Box>
             </Box>
           </ModalBody>
-            <Flex justify="center" pb={4} width="86%" margin="auto">
+          <Flex justify="center" pb={4} width="86%" margin="auto">
             <Button colorScheme="blue" mr={3} onClick={() => handleAttendance('出勤')} width="50%">
               出勤
             </Button>
             <Button colorScheme="red" onClick={() => handleAttendance('退勤')} width="50%">
               退勤
             </Button>
-            </Flex>
+          </Flex>
         </ModalContent>
       </Modal>
     </Box>
