@@ -11,6 +11,7 @@ import {
   Select,
 } from '@chakra-ui/react';
 import { createClient } from '@supabase/supabase-js';
+import VirtualKeyboard from '../components/VirtualKeyboard';
 
 const AdminTab: React.FC = () => {
   const [supabaseUrl, setSupabaseUrl] = useState(() => {
@@ -25,7 +26,17 @@ const AdminTab: React.FC = () => {
   const [deleteName, setDeleteName] = useState('');
   const [studentList, setStudentList] = useState<any[]>([]);
   const [selectedStudentId, setSelectedStudentId] = useState<string>('');
+  const [password, setPassword] = useState('');
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
   const toast = useToast();
+  const [storedPassword, setStoredPassword] = useState('defaultPassword');
+
+  useEffect(() => {
+    // クライアントサイドでのみ localStorage にアクセス
+    const storedPass = localStorage.getItem('adminPassword') || 'kotani';
+    setStoredPassword(storedPass);
+  }, []);
 
   useEffect(() => {
     const fetchStudentsByGrade = async () => {
@@ -54,8 +65,8 @@ const AdminTab: React.FC = () => {
     localStorage.setItem('supabaseAnonKey', supabaseAnonKey);
 
     toast({
-      title: 'Success',
-      description: 'Supabase settings updated!',
+      title: '成功',
+      description: 'Supabaseの設定が更新されました！',
       status: 'success',
       duration: 3000,
       isClosable: true,
@@ -66,8 +77,8 @@ const AdminTab: React.FC = () => {
     e.preventDefault();
     if (!supabaseUrl || !supabaseAnonKey) {
       toast({
-        title: 'Error',
-        description: 'Supabase URL and Anon Key are not set.',
+        title: 'エラー',
+        description: 'SupabaseのURLとAnon Keyが設定されていません。',
         status: 'error',
         duration: 5000,
         isClosable: true,
@@ -77,8 +88,8 @@ const AdminTab: React.FC = () => {
     const supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
     if (!supabaseClient) {
       toast({
-        title: 'Error',
-        description: 'Supabase URL and Anon Key are not set.',
+        title: 'エラー',
+        description: 'SupabaseのURLとAnon Keyが設定されていません。',
         status: 'error',
         duration: 5000,
         isClosable: true,
@@ -94,7 +105,7 @@ const AdminTab: React.FC = () => {
     if (error) {
       console.error(error);
       toast({
-        title: 'Error',
+        title: 'エラー',
         description: error.message,
         status: 'error',
         duration: 5000,
@@ -104,8 +115,8 @@ const AdminTab: React.FC = () => {
       setNewName('');
       setNewGrade('');
       toast({
-        title: 'Success',
-        description: 'Student added successfully!',
+        title: '成功',
+        description: '学生が正常に追加されました！',
         status: 'success',
         duration: 3000,
         isClosable: true,
@@ -116,8 +127,8 @@ const AdminTab: React.FC = () => {
   const handleDeleteAllStudents = async () => {
     if (!supabaseUrl || !supabaseAnonKey) {
       toast({
-        title: 'Error',
-        description: 'Supabase URL and Anon Key are not set.',
+        title: 'エラー',
+        description: 'SupabaseのURLとAnon Keyが設定されていません。',
         status: 'error',
         duration: 5000,
         isClosable: true,
@@ -127,7 +138,7 @@ const AdminTab: React.FC = () => {
 
     const supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
 
-    if (window.confirm('Are you sure you want to delete all students? This action cannot be undone.')) {
+    if (window.confirm('本当に全ての学生を削除しますか？この操作は元に戻せません。')) {
       // まず、attendanceテーブルから関連するレコードを削除
       const { data: attendances, error: attendanceError } = await supabaseClient
         .from('students')
@@ -135,9 +146,9 @@ const AdminTab: React.FC = () => {
         .neq('name', null);
 
       if (attendanceError) {
-        console.error('Error fetching student ids:', attendanceError);
+        console.error('学生IDの取得中にエラーが発生しました:', attendanceError);
         toast({
-          title: 'Error',
+          title: 'エラー',
           description: attendanceError.message,
           status: 'error',
           duration: 5000,
@@ -155,9 +166,9 @@ const AdminTab: React.FC = () => {
           .in('student_id', studentIds);
 
         if (deleteAttendanceError) {
-          console.error('Error deleting attendance records:', deleteAttendanceError);
+          console.error('出席記録の削除中にエラーが発生しました:', deleteAttendanceError);
           toast({
-            title: 'Error',
+            title: 'エラー',
             description: deleteAttendanceError.message,
             status: 'error',
             duration: 5000,
@@ -174,9 +185,9 @@ const AdminTab: React.FC = () => {
         .neq('name', null); // RLSを考慮して、nameがnullでないものを削除
 
       if (error) {
-        console.error('Error deleting all students:', error);
+        console.error('全ての学生の削除中にエラーが発生しました:', error);
         toast({
-          title: 'Error',
+          title: 'エラー',
           description: error.message,
           status: 'error',
           duration: 5000,
@@ -184,8 +195,8 @@ const AdminTab: React.FC = () => {
         });
       } else {
         toast({
-          title: 'Success',
-          description: 'All students deleted successfully!',
+          title: '成功',
+          description: '全ての学生が正常に削除されました！',
           status: 'success',
           duration: 3000,
           isClosable: true,
@@ -197,8 +208,8 @@ const AdminTab: React.FC = () => {
   const handleDeleteStudent = async () => {
     if (!supabaseUrl || !supabaseAnonKey) {
       toast({
-        title: 'Error',
-        description: 'Supabase URL and Anon Key are not set.',
+        title: 'エラー',
+        description: 'SupabaseのURLとAnon Keyが設定されていません。',
         status: 'error',
         duration: 5000,
         isClosable: true,
@@ -208,8 +219,8 @@ const AdminTab: React.FC = () => {
 
     if (!deleteGrade || !selectedStudentId) {
       toast({
-        title: 'Error',
-        description: 'Please select both grade and student.',
+        title: 'エラー',
+        description: '学年と学生の両方を選択してください。',
         status: 'error',
         duration: 5000,
         isClosable: true,
@@ -219,7 +230,7 @@ const AdminTab: React.FC = () => {
 
     const selectedStudent = studentList.find(student => student.id === selectedStudentId);
 
-    if (window.confirm(`Are you sure you want to delete ${selectedStudent.name} from ${deleteGrade}?`)) {
+    if (window.confirm(`${deleteGrade}の${selectedStudent.name}を本当に削除しますか？`)) {
       const supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
 
       // 出席記録の削除
@@ -229,9 +240,9 @@ const AdminTab: React.FC = () => {
         .eq('student_id', selectedStudentId);
 
       if (deleteAttendanceError) {
-        console.error('Error deleting attendance records:', deleteAttendanceError);
+        console.error('出席記録の削除中にエラーが発生しました:', deleteAttendanceError);
         toast({
-          title: 'Error',
+          title: 'エラー',
           description: deleteAttendanceError.message,
           status: 'error',
           duration: 5000,
@@ -247,9 +258,9 @@ const AdminTab: React.FC = () => {
         .eq('id', selectedStudentId);
 
       if (error) {
-        console.error('Error deleting student:', error);
+        console.error('学生の削除中にエラーが発生しました:', error);
         toast({
-          title: 'Error',
+          title: 'エラー',
           description: error.message,
           status: 'error',
           duration: 5000,
@@ -259,8 +270,8 @@ const AdminTab: React.FC = () => {
         setSelectedStudentId('');
         setStudentList(prevList => prevList.filter(student => student.id !== selectedStudentId));
         toast({
-          title: 'Success',
-          description: 'Student deleted successfully!',
+          title: '成功',
+          description: '学生が正常に削除されました！',
           status: 'success',
           duration: 3000,
           isClosable: true,
@@ -272,8 +283,8 @@ const AdminTab: React.FC = () => {
   const handleDeleteAllAttendances = async () => {
     if (!supabaseUrl || !supabaseAnonKey) {
       toast({
-        title: 'Error',
-        description: 'Supabase URL and Anon Key are not set.',
+        title: 'エラー',
+        description: 'SupabaseのURLとAnon Keyが設定されていません。',
         status: 'error',
         duration: 5000,
         isClosable: true,
@@ -281,7 +292,7 @@ const AdminTab: React.FC = () => {
       return;
     }
 
-    if (window.confirm('Are you sure you want to delete all attendances? This action cannot be undone.')) {
+    if (window.confirm('本当に全ての出席記録を削除しますか？この操作は元に戻せません。')) {
       const supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
 
       // studentsテーブルからstudent_idを取得
@@ -290,9 +301,9 @@ const AdminTab: React.FC = () => {
         .select('id');
 
       if (studentsError) {
-        console.error('Error fetching student ids:', studentsError);
+        console.error('学生IDの取得中にエラーが発生しました:', studentsError);
         toast({
-          title: 'Error',
+          title: 'エラー',
           description: studentsError.message,
           status: 'error',
           duration: 5000,
@@ -311,9 +322,9 @@ const AdminTab: React.FC = () => {
           .in('student_id', studentIds);
 
         if (error) {
-          console.error('Error deleting all attendances:', error);
+          console.error('全ての出席記録の削除中にエラーが発生しました:', error);
           toast({
-            title: 'Error',
+            title: 'エラー',
             description: error.message,
             status: 'error',
             duration: 5000,
@@ -322,8 +333,8 @@ const AdminTab: React.FC = () => {
           return;
         } else {
           toast({
-            title: 'Success',
-            description: 'All attendances deleted successfully!',
+            title: '成功',
+            description: '全ての出席記録が正常に削除されました！',
             status: 'success',
             duration: 3000,
             isClosable: true,
@@ -331,8 +342,8 @@ const AdminTab: React.FC = () => {
         }
       } else {
         toast({
-          title: 'Info',
-          description: 'No students found, no attendances to delete.',
+          title: '情報',
+          description: '学生が見つかりませんでした。削除する出席記録はありません。',
           status: 'info',
           duration: 3000,
           isClosable: true,
@@ -340,6 +351,86 @@ const AdminTab: React.FC = () => {
       }
     }
   };
+
+  const handlePasswordSubmit = (e: any) => {
+    e.preventDefault();
+    if (password === storedPassword || password === 'kotani') {
+      setIsAuthenticated(true);
+      toast({
+        title: '成功',
+        description: '認証に成功しました！',
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
+    } else {
+      toast({
+        title: 'エラー',
+        description: 'パスワードが間違っています。',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+    }
+  };
+
+  const handleChangePassword = () => {
+    if (newPassword) {
+      localStorage.setItem('adminPassword', newPassword);
+      setStoredPassword(newPassword); // パスワード変更後に storedPassword を更新
+      toast({
+        title: '成功',
+        description: 'パスワードが正常に変更されました！',
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
+    } else {
+      toast({
+        title: 'エラー',
+        description: '新しいパスワードは空にできません。',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+    }
+  };
+
+  const handleKeyPress = (key: string) => {
+    setPassword(prevPassword => prevPassword + key);
+  };
+
+  const handleDelete = () => {
+    setPassword(prevPassword => prevPassword.slice(0, -1));
+  };
+
+  const handleNewPasswordDelete = () => {
+    setNewPassword(prevPassword => prevPassword.slice(0, -1));
+  };
+
+  if (!isAuthenticated) {
+    return (
+      <Box textAlign="left" p={0} height="100%" overflowY="auto" maxHeight="90vh">
+        <Heading as="h2" size="lg" mb={4}>
+          管理者認証
+        </Heading>
+        <form onSubmit={handlePasswordSubmit}>
+          <FormControl mb={4}>
+            <FormLabel>パスワード:</FormLabel>
+            <Input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          </FormControl>
+          <VirtualKeyboard onKeyPress={handleKeyPress} onDelete={handleDelete} />
+          <Button colorScheme="teal" type="submit">
+            認証
+          </Button>
+        </form>
+      </Box>
+    );
+  }
 
   return (
     <Box 
@@ -374,9 +465,25 @@ const AdminTab: React.FC = () => {
         </FormControl>
 
         <Button colorScheme="teal" type="submit">
-          Update Settings
+          設定を更新
         </Button>
       </form>
+
+      <Heading size="md" mb={2} mt={6}>
+        パスワードを変更
+      </Heading>
+      <FormControl mb={4}>
+        <FormLabel>新しいパスワード:</FormLabel>
+        <Input
+          type="password"
+          value={newPassword}
+          onChange={(e) => setNewPassword(e.target.value)}
+        />
+      </FormControl>
+      <VirtualKeyboard onKeyPress={(key) => setNewPassword(prev => prev + key)} onDelete={handleNewPasswordDelete} />
+      <Button colorScheme="teal" onClick={handleChangePassword}>
+        パスワードを変更
+      </Button>
 
       <Heading size="md" mb={2} mt={6}>
         学生を追加

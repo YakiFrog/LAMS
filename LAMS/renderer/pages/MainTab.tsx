@@ -410,8 +410,8 @@ const MainTab: React.FC = () => {
 
     if (status === '退勤' && attendanceStatus[selectedStudentId]?.status !== '出勤') {
       toast({
-        title: 'Cannot Record 退勤',
-        description: `This student is not currently marked as 出勤.`,
+        title: '退勤を記録できません',
+        description: `この学生は現在出勤としてマークされていません。`,
         status: 'warning',
         duration: 3000,
         isClosable: true,

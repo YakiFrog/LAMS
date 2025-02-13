@@ -42,6 +42,7 @@ const Home: React.FC = () => {
     setTabIndex(index);
     // タブが変更されたときにローカルストレージにインデックスを保存
     localStorage.setItem('tabIndex', index.toString());
+    // router.reload();
   };
 
   const handleReload = () => {
