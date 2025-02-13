@@ -39,7 +39,7 @@ const AdminTab: React.FC = () => {
         if (error) {
           console.error('Error fetching students:', error);
         } else {
-          setStudentList(data || []);
+          setStudentList(data.sort((a, b) => a.name.localeCompare(b.name, 'ja')) || []);
         }
       }
     };
@@ -128,6 +128,46 @@ const AdminTab: React.FC = () => {
     const supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
 
     if (window.confirm('Are you sure you want to delete all students? This action cannot be undone.')) {
+      // まず、attendanceテーブルから関連するレコードを削除
+      const { data: attendances, error: attendanceError } = await supabaseClient
+        .from('students')
+        .select('id')
+        .neq('name', null);
+
+      if (attendanceError) {
+        console.error('Error fetching student ids:', attendanceError);
+        toast({
+          title: 'Error',
+          description: attendanceError.message,
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
+        return;
+      }
+
+      if (attendances && attendances.length > 0) {
+        const studentIds = attendances.map((student) => student.id);
+
+        const { error: deleteAttendanceError } = await supabaseClient
+          .from('attendance')
+          .delete()
+          .in('student_id', studentIds);
+
+        if (deleteAttendanceError) {
+          console.error('Error deleting attendance records:', deleteAttendanceError);
+          toast({
+            title: 'Error',
+            description: deleteAttendanceError.message,
+            status: 'error',
+            duration: 5000,
+            isClosable: true,
+          });
+          return;
+        }
+      }
+
+      // 次に、studentsテーブルから学生を削除
       const { error } = await supabaseClient
         .from('students')
         .delete()
@@ -232,7 +272,7 @@ const AdminTab: React.FC = () => {
   return (
     <Box 
       textAlign="left" 
-      p={4}
+      p={0}
       height="100%"
       overflowY="auto"
       maxHeight="90vh"  // 画面の高さに合わせて調整

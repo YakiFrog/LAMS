@@ -23,7 +23,7 @@ const MainTab: React.FC = () => {
     M1: [],
     B4: [],
   });
-  const fontSize = '3xl'; // 文字サイズを調整するための変数（文字サイズは 'xs', 'sm', 'md', 'lg', 'xl', '2xl', '3xl', '4xl', '5xl', '6xl' のいずれか）
+  const fontSize = '2xl'; // 文字サイズを調整するための変数（文字サイズは 'xs', 'sm', 'md', 'lg', 'xl', '2xl', '3xl', '4xl', '5xl', '6xl' のいずれか）
   const theme = useTheme();
   const fontSizePixel = theme.fontSizes[fontSize]; // fontSizeに対応するピクセル値を取得
 
@@ -69,6 +69,11 @@ const MainTab: React.FC = () => {
           name: student.name,
           grade: student.grade,
         });
+      });
+
+      // グレードごとに学生を名前でソート
+      Object.keys(groupedStudents).forEach((grade) => {
+        groupedStudents[grade].sort((a, b) => a.name.localeCompare(b.name, 'ja'));
       });
 
       setStudents(groupedStudents);
@@ -218,7 +223,7 @@ const MainTab: React.FC = () => {
   return (
     <Box 
       textAlign="left" 
-      p={4} 
+      pt={0} 
       height="100%"
       overflowY="auto"
       maxHeight="90vh"  // 画面の高さに合わせて調整
@@ -229,23 +234,9 @@ const MainTab: React.FC = () => {
       <Text fontSize={fontSize}>出勤・退勤操作を行います。</Text> */}
 
       {['M2', 'M1', 'B4'].map((section) => (
-        <Box key={section} mt={4}>
+        <Box key={section} mb={4}>
           <Heading as="h3" size="md" fontSize={fontSize}>
             {section}
-            <IconButton
-              aria-label={`Add student to ${section}`}
-              icon={<AddIcon />}
-              size="sm"
-              ml={2}
-              onClick={() => handleAddStudent(section)}
-            />
-            <IconButton
-              aria-label={`Remove student from ${section}`}
-              icon={<MinusIcon />}
-              size="sm"
-              ml={2}
-              onClick={() => handleRemoveStudent(section)}
-            />
           </Heading>
           <Divider my={2} /> {/* Dividerを追加 */}
           <Wrap maxWidth="none" border={`1px solid ${theme.colors.gray[200]}`} borderRadius="md" p={2} spacing={2}>
@@ -256,8 +247,9 @@ const MainTab: React.FC = () => {
                   borderRadius="md"
                   p={2}
                   boxShadow="sm"
-                  fontSize={fontSize} // 学生名の文字サイズを調整
+                  fontSize="xl" // 学生名の文字サイズを調整
                   width="100%"
+                  minWidth="180px" // Minimum widthを設定
                   textAlign="center"
                   margin={0}
                   cursor="pointer" // カーソルを変更
@@ -268,7 +260,13 @@ const MainTab: React.FC = () => {
                   }
                   position="relative" // 相対位置指定
                 >
-                  {student.name}
+                  <Text
+                    whiteSpace="nowrap"
+                    overflow="hidden"
+                    textOverflow="ellipsis"
+                  >
+                    {student.name}
+                  </Text>
                   {attendanceStatus[student.id] && (
                     <Text
                       position="absolute" // 絶対位置指定

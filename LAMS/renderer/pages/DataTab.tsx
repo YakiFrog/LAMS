@@ -29,7 +29,7 @@ const DataTab: React.FC = () => {
   const [monthlyData, setMonthlyData] = useState<any[]>([]);
   const [yearlyData, setYearlyData] = useState<any[]>([]);
   const theme = useTheme();
-  const fontSize = '3xl'; // 文字サイズを調整するための変数（文字サイズは 'xs', 'sm', 'md', 'lg', 'xl', '2xl', '3xl', '4xl', '5xl', '6xl' のいずれか）
+  const fontSize = '2xl'; // 文字サイズを調整するための変数（文字サイズは 'xs', 'sm', 'md', 'lg', 'xl', '2xl', '3xl', '4xl', '5xl', '6xl' のいずれか）
   const fontSizePixel = theme.fontSizes[fontSize]; // fontSizeに対応するピクセル値を取得
 
   useEffect(() => {
@@ -59,6 +59,11 @@ const DataTab: React.FC = () => {
           name: student.name,
           grade: student.grade,
         });
+      });
+
+      // グレードごとに学生を名前でソート
+      Object.keys(groupedStudents).forEach((grade) => {
+        groupedStudents[grade].sort((a, b) => a.name.localeCompare(b.name, 'ja'));
       });
 
       setStudents(groupedStudents);
@@ -294,16 +299,16 @@ const DataTab: React.FC = () => {
   };
 
   return (
-    <Box textAlign="left" p={4} height="100%">
-      <Grid templateColumns="3fr 2fr" gap={6} height="100%">
+    <Box textAlign="left" p={0} height="100%">
+      <Grid templateColumns="3fr 2.56fr" gap={5} height="100%">
         <GridItem height="100%">
           <Flex direction="column" height="100%">
             {selectedStudentId && (
               <Box>
-                <Heading as="h3" size="md" mt={4}>
+                <Heading as="h3" size="md" mb={4}>
                   週ごとの出勤時間
                 </Heading>
-                <ResponsiveContainer width="100%" height={200}>
+                <ResponsiveContainer width="100%" height={250}>
                   <BarChart data={weeklyData.length > 0 ? weeklyData : []}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="day" />
@@ -325,15 +330,15 @@ const DataTab: React.FC = () => {
                         return `${value * 60 * 60} 秒`;
                       }
                     }} />
-                    <Legend />
-                    <Bar dataKey="出勤時間" fill="#8884d8" />
+                    {/* <Legend /> */}
+                    <Bar dataKey="出勤時間" fill="#28a745" barSize={15} />
                   </BarChart>
                 </ResponsiveContainer>
 
-                <Heading as="h3" size="md" mt={4}>
+                <Heading as="h3" size="md" mb={4}>
                   月ごとの出勤時間
                 </Heading>
-                <ResponsiveContainer width="100%" height={200}>
+                <ResponsiveContainer width="100%" height={150}>
                   <BarChart data={monthlyData.length > 0 ? monthlyData : []}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="day" />
@@ -355,15 +360,15 @@ const DataTab: React.FC = () => {
                         return `${value * 60 * 60} 秒`;
                       }
                     }} />
-                    <Legend />
-                    <Bar dataKey="出勤時間" fill="#8884d8" />
+                    {/* <Legend /> */}
+                    <Bar dataKey="出勤時間" fill="#28a745" barSize={15} />
                   </BarChart>
                 </ResponsiveContainer>
 
-                <Heading as="h3" size="md" mt={4}>
+                <Heading as="h3" size="md" mb={4}>
                   年ごとの出勤時間
                 </Heading>
-                <ResponsiveContainer width="100%" height={200}>
+                <ResponsiveContainer width="100%" height={150}>
                   <BarChart data={yearlyData.length > 0 ? yearlyData : []}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="month" />
@@ -385,8 +390,8 @@ const DataTab: React.FC = () => {
                         return `${value * 60 * 60} 秒`;
                       }
                     }} />
-                    <Legend />
-                    <Bar dataKey="出勤時間" fill="#8884d8" />
+                    {/* <Legend /> */}
+                    <Bar dataKey="出勤時間" fill="#28a745" barSize={15} />
                   </BarChart>
                 </ResponsiveContainer>
               </Box>
@@ -402,34 +407,23 @@ const DataTab: React.FC = () => {
             maxHeight="80vh" // 画面の高さに合わせて調整
           >
             {['M2', 'M1', 'B4'].map((section) => (
-              <Box key={section} mt={4}>
+              <Box key={section} mb={4}>
                 <Heading as="h3" size="md" fontSize={fontSize}>
                   {section}
-                  <IconButton
-                    aria-label={`Add student to ${section}`}
-                    icon={<AddIcon />}
-                    size="sm"
-                    ml={2}
-                    onClick={() => handleAddStudent(section)}
-                  />
-                  <IconButton
-                    aria-label={`Remove student from ${section}`}
-                    icon={<MinusIcon />}
-                    size="sm"
-                    ml={2}
-                    onClick={() => handleRemoveStudent(section)}
-                  />
                 </Heading>
                 <Divider my={2} />
                 <Wrap maxWidth="none" border={`1px solid ${theme.colors.gray[200]}`} borderRadius="md" p={2} spacing={2}>
                   {students[section]?.map((student, index) => (
-                    <WrapItem key={`${student.id}-${index}`} flexBasis="calc(100% / 10)">
+                    <WrapItem key={`${student.id}-${index}`} flexBasis="calc(100% / 10
+                    )">
                       <Box
                         borderWidth="1px"
                         borderRadius="md"
-                        p={2}
+                        p={1}
+                        pl={2}
+                        pr={2}
                         boxShadow="sm"
-                        fontSize="xl"
+                        fontSize="lg"
                         width="100%"
                         textAlign="center"
                         margin={0}
