@@ -350,7 +350,16 @@ const CustomTooltip: React.FC<{ payload: any[] }> = ({ payload }) => {
     let labelKey = Object.keys(data).find(key => key === 'day' || key === 'month');
     let labelPrefix = labelKey === 'day' ? '日' : '月';
     let label = `${labelPrefix}: ${data[labelKey! as keyof typeof data]}`;
-    let value = `出勤時間: ${data.出勤時間.toFixed(2)} 時間`;
+    let value = '';
+    const hours = data.出勤時間;
+
+    if (hours >= 1) {
+      value = `出勤時間: ${hours.toFixed(0)} 時間`;
+    } else if (hours * 60 >= 1) {
+      value = `出勤時間: ${(hours * 60).toFixed(0)} 分`;
+    } else {
+      value = `出勤時間: ${(hours * 60 * 60).toFixed(0)} 秒`;
+    }
 
     return (
       <Box bg="white" border="1px solid #ccc" p={2}>

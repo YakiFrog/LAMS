@@ -31,6 +31,11 @@ const MainTab: React.FC = () => {
   const [yearlyTotalTime, setYearlyTotalTime] = useState<number>(0);
   const [attendedDays, setAttendedDays] = useState<number[]>([]);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -112,7 +117,17 @@ const MainTab: React.FC = () => {
           }
 
           if (attendanceData && attendanceData.length > 0) {
-            initialStatus[student.id] = attendanceData[0].status as '出勤' | '退勤';
+            const lastAttendance = attendanceData[0];
+            const lastAttendanceTime = new Date(lastAttendance.timestamp);
+            const now = new Date();
+
+            const isSameDay = now.toLocaleDateString() === lastAttendanceTime.toLocaleDateString();
+
+            if (isSameDay) {
+              initialStatus[student.id] = lastAttendance.status as '出勤' | '退勤';
+            } else {
+              initialStatus[student.id] = null;
+            }
           } else {
             initialStatus[student.id] = null;
           }
@@ -155,10 +170,12 @@ const MainTab: React.FC = () => {
 
       let weeklyTime = 0;
       if (weeklyData && weeklyData.length > 1) {
-        for (let i = 0; i < weeklyData.length - 1; i++) {
-          const checkIn = new Date(weeklyData[i].timestamp).getTime();
-          const checkOut = new Date(weeklyData[i + 1].timestamp).getTime();
-          weeklyTime += (checkOut - checkIn);
+        for (let i = 0; i < weeklyData.length - 1; i += 2) {
+          if (weeklyData[i].status === '出勤' && weeklyData[i + 1] && weeklyData[i + 1].status === '退勤') {
+            const checkIn = new Date(weeklyData[i].timestamp).getTime();
+            const checkOut = new Date(weeklyData[i + 1].timestamp).getTime();
+            weeklyTime += (checkOut - checkIn);
+          }
         }
         weeklyTime = weeklyTime / (1000 * 60 * 60);
       } else {
@@ -197,10 +214,12 @@ const MainTab: React.FC = () => {
 
       let monthlyTime = 0;
       if (monthlyData && monthlyData.length > 1) {
-        for (let i = 0; i < monthlyData.length - 1; i++) {
-          const checkIn = new Date(monthlyData[i].timestamp).getTime();
-          const checkOut = new Date(monthlyData[i + 1].timestamp).getTime();
-          monthlyTime += (checkOut - checkIn);
+        for (let i = 0; i < monthlyData.length - 1; i += 2) {
+          if (monthlyData[i].status === '出勤' && monthlyData[i + 1] && monthlyData[i + 1].status === '退勤') {
+            const checkIn = new Date(monthlyData[i].timestamp).getTime();
+            const checkOut = new Date(monthlyData[i + 1].timestamp).getTime();
+            monthlyTime += (checkOut - checkIn);
+          }
         }
         monthlyTime = monthlyTime / (1000 * 60 * 60);
       } else {
@@ -216,6 +235,7 @@ const MainTab: React.FC = () => {
     const { data: yearlyData, error: yearlyError } = await supabaseClient
       .from('attendance')
       .select('*')
+      .eq('student_id', studentId)
       .gte('timestamp', startOfYear.toISOString());
 
     if (yearlyError) {
@@ -226,10 +246,12 @@ const MainTab: React.FC = () => {
 
       let yearlyTime = 0;
       if (yearlyData && yearlyData.length > 1) {
-        for (let i = 0; i < yearlyData.length - 1; i++) {
-          const checkIn = new Date(yearlyData[i].timestamp).getTime();
-          const checkOut = new Date(yearlyData[i + 1].timestamp).getTime();
-          yearlyTime += (checkOut - checkIn);
+        for (let i = 0; i < yearlyData.length - 1; i += 2) {
+          if (yearlyData[i].status === '出勤' && yearlyData[i + 1] && yearlyData[i + 1].status === '退勤') {
+            const checkIn = new Date(yearlyData[i].timestamp).getTime();
+            const checkOut = new Date(yearlyData[i + 1].timestamp).getTime();
+            yearlyTime += (checkOut - checkIn);
+          }
         }
         yearlyTime = yearlyTime / (1000 * 60 * 60);
       } else {
@@ -391,7 +413,7 @@ const MainTab: React.FC = () => {
           {section === 'M2' && (
             <Text fontSize="2xl" fontWeight="extrabold" mb={3}
               bg="gray.100" borderRadius="md" p={2} textAlign="center">
-              {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+              {isClient ? currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'Loading...'}
             </Text>
           )}
           <Heading as="h3" size="md" fontSize={fontSize}>
@@ -448,8 +470,8 @@ const MainTab: React.FC = () => {
                 {['月', '火', '水', '木', '金', '土', '日'].map((day, index) => (
                   <Box
                     key={day} width="30px" height="30px" borderRadius="50%"
-                    bg={attendedDays.includes(index + 1) ? 'blue.500' : 'gray.200'}
-                    color={attendedDays.includes(index + 1) ? 'white' : 'gray.500'}
+                    bg={attendedDays.includes(index) ? 'blue.500' : 'gray.200'}
+                    color={attendedDays.includes(index) ? 'white' : 'gray.500'}
                     display="flex" alignItems="center" justifyContent="center" fontSize="sm" m={1}
                   >
                     {day}
@@ -482,5 +504,6 @@ const MainTab: React.FC = () => {
     </Box>
   );
 };
+
 
 export default MainTab;
