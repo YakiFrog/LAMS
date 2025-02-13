@@ -230,7 +230,13 @@ const AdminTab: React.FC = () => {
   };
 
   return (
-    <Box textAlign="left" p={4}>
+    <Box 
+      textAlign="left" 
+      p={4}
+      height="100%"
+      overflowY="auto"
+      maxHeight="90vh"  // 画面の高さに合わせて調整
+    >
       {/* <Heading as="h2" size="lg" mb={4}>
         管理タブ
       </Heading>

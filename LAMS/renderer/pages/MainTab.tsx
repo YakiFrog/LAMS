@@ -216,7 +216,13 @@ const MainTab: React.FC = () => {
   };
 
   return (
-    <Box textAlign="left">
+    <Box 
+      textAlign="left" 
+      p={4} 
+      height="100%"
+      overflowY="auto"
+      maxHeight="90vh"  // 画面の高さに合わせて調整
+    >
       {/* <Heading as="h2" size="lg" fontSize={fontSize}>
         メインタブ
       </Heading>
