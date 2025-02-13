@@ -36,6 +36,13 @@ const MainTab: React.FC = () => {
   const [attendanceStatus, setAttendanceStatus] = useState<{ [studentId: string]: '出勤' | '退勤' | null }>(
     {}
   );
+  const [weeklyAttendance, setWeeklyAttendance] = useState<number>(0);
+  const [monthlyAttendance, setMonthlyAttendance] = useState<number>(0);
+  const [yearlyAttendance, setYearlyAttendance] = useState<number>(0);
+  const [weeklyTotalTime, setWeeklyTotalTime] = useState<number>(0);
+  const [monthlyTotalTime, setMonthlyTotalTime] = useState<number>(0);
+  const [yearlyTotalTime, setYearlyTotalTime] = useState<number>(0);
+  const [attendedDays, setAttendedDays] = useState<number[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -122,6 +129,137 @@ const MainTab: React.FC = () => {
     fetchInitialAttendance();
   }, [students]);
 
+  const fetchAttendanceData = async (studentId: string) => {
+    const supabaseUrl = localStorage.getItem('supabaseUrl') || '';
+    const supabaseAnonKey = localStorage.getItem('supabaseAnonKey') || '';
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.error('Supabase URL and Anon Key are not set.');
+      return;
+    }
+
+    const supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
+
+    // 今週の出勤データを取得
+    const startOfWeek = new Date();
+    startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay()); // 今週の日曜日に設定
+    startOfWeek.setHours(0, 0, 0, 0);
+
+    const { data: weeklyData, error: weeklyError } = await supabaseClient
+      .from('attendance')
+      .select('*')
+      .eq('student_id', studentId)
+      .gte('timestamp', startOfWeek.toISOString());
+
+    if (weeklyError) {
+      console.error('Error fetching weekly attendance:', weeklyError);
+    } else {
+      // 出勤回数を計算
+      const weeklyCount = weeklyData ? weeklyData.length : 0;
+      setWeeklyAttendance(weeklyCount);
+
+      // 合計時間を計算
+      let weeklyTime = 0;
+      if (weeklyData) {
+        weeklyTime = weeklyData.reduce((total, record) => {
+          const timestamp = new Date(record.timestamp).getTime();
+          return total + timestamp;
+        }, 0);
+        if (weeklyCount > 0) {
+          weeklyTime = weeklyTime / weeklyCount;
+          weeklyTime = new Date().getTime() - weeklyTime;
+          weeklyTime = weeklyTime / (1000 * 60 * 60);
+        } else {
+          weeklyTime = 0;
+        }
+      }
+      setWeeklyTotalTime(weeklyTime);
+
+      // 出勤した曜日を記録
+      const days: number[] = [];
+      if (weeklyData) {
+        weeklyData.forEach(record => {
+          const day = new Date(record.timestamp).getDay();
+          if (!days.includes(day)) {
+            days.push(day);
+          }
+        });
+      }
+      setAttendedDays(days);
+    }
+
+    // 今月の出勤データを取得
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1); // 今月の1日に設定
+    startOfMonth.setHours(0, 0, 0, 0);
+
+    const { data: monthlyData, error: monthlyError } = await supabaseClient
+      .from('attendance')
+      .select('*')
+      .eq('student_id', studentId)
+      .gte('timestamp', startOfMonth.toISOString());
+
+    if (monthlyError) {
+      console.error('Error fetching monthly attendance:', monthlyError);
+    } else {
+      // 出勤回数を計算
+      const monthlyCount = monthlyData ? monthlyData.length : 0;
+      setMonthlyAttendance(monthlyCount);
+
+      // 合計時間を計算
+      let monthlyTime = 0;
+      if (monthlyData) {
+        monthlyTime = monthlyData.reduce((total, record) => {
+          const timestamp = new Date(record.timestamp).getTime();
+          return total + timestamp;
+        }, 0);
+        if (monthlyCount > 0) {
+          monthlyTime = monthlyTime / monthlyCount;
+          monthlyTime = new Date().getTime() - monthlyTime;
+          monthlyTime = monthlyTime / (1000 * 60 * 60);
+        } else {
+          monthlyTime = 0;
+        }
+      }
+      setMonthlyTotalTime(monthlyTime);
+    }
+
+    // 今年の出勤データを取得
+    const startOfYear = new Date();
+    startOfYear.setMonth(0, 1); // 今年の1月1日に設定
+    startOfYear.setHours(0, 0, 0, 0);
+
+    const { data: yearlyData, error: yearlyError } = await supabaseClient
+      .from('attendance')
+      .select('*')
+      .gte('timestamp', startOfYear.toISOString());
+
+    if (yearlyError) {
+      console.error('Error fetching yearly attendance:', yearlyError);
+    } else {
+      // 出勤回数を計算
+      const yearlyCount = yearlyData ? yearlyData.length : 0;
+      setYearlyAttendance(yearlyCount);
+
+      // 合計時間を計算
+      let yearlyTime = 0;
+      if (yearlyData) {
+        yearlyTime = yearlyData.reduce((total, record) => {
+          const timestamp = new Date(record.timestamp).getTime();
+          return total + timestamp;
+        }, 0);
+        if (yearlyCount > 0) {
+          yearlyTime = yearlyTime / yearlyCount;
+          yearlyTime = new Date().getTime() - yearlyTime;
+          yearlyTime = yearlyTime / (1000 * 60 * 60);
+        } else {
+          yearlyTime = 0;
+        }
+      }
+      setYearlyTotalTime(yearlyTime);
+    }
+  };
+
   const handleAddStudent = useCallback((grade: string) => {
     setStudents((prevStudents) => {
       const currentStudents = prevStudents[grade] || [];
@@ -154,6 +292,7 @@ const MainTab: React.FC = () => {
   const handleStudentClick = (student: Student) => {
     setSelectedStudent(student.id);
     setIsModalOpen(true);
+    fetchAttendanceData(student.id);
   };
 
   const handleCloseModal = () => {
@@ -292,8 +431,8 @@ const MainTab: React.FC = () => {
         <ModalOverlay />
         <ModalContent
           style={{
-            maxWidth: '300px', // モーダルの最大幅を設定
-            width: '100%',
+            // maxWidth: '300px', // モーダルの最大幅を設定
+            width: '30%',
             aspectRatio: '1 / 1', // 1:1のアスペクト比を設定
           }}
         >
@@ -301,18 +440,56 @@ const MainTab: React.FC = () => {
             students.M1.find(s => s.id === selectedStudent)?.name ||
             students.B4.find(s => s.id === selectedStudent)?.name}</ModalHeader>
           <ModalCloseButton />
-          <ModalBody>
-            <Text mb={4} fontSize="xs"
-            >Student ID: {selectedStudent}</Text>
+          <ModalBody pt={0}>
+            <Text p={2} pl={1} fontSize="xs" mb={4}>
+              Student ID: {selectedStudent}
+            </Text>
+            <Box
+              borderWidth="1px"
+              borderRadius="md"
+              p={2}
+              boxShadow="sm"
+            >
+              <Flex justify="space-around" mb={2}>
+                {['月', '火', '水', '木', '金', '土', '日'].map((day, index) => (
+                  <Box
+                    key={day}
+                    width="30px"
+                    height="30px"
+                    borderRadius="50%"
+                    bg={attendedDays.includes(index + 1) ? 'blue.500' : 'gray.200'}
+                    color={attendedDays.includes(index + 1) ? 'white' : 'gray.500'}
+                    display="flex"
+                    alignItems="center"
+                    justifyContent="center"
+                    fontSize="sm"
+                    m={1}
+                  >
+                    {day}
+                  </Box>
+                ))}
+              </Flex>
+              <Box pl={1}>
+                <Text fontSize="sm" mb={1}>
+                  今週の出勤: {weeklyAttendance} 回, {isNaN(weeklyTotalTime) ? 0 : Math.floor(weeklyTotalTime)} 時間
+                </Text>
+                <Text fontSize="sm" mb={1}>
+                  今月の出勤: {monthlyAttendance} 回, {isNaN(monthlyTotalTime) ? 0 : Math.floor(monthlyTotalTime)} 時間
+                </Text>
+                <Text fontSize="sm" mb={1}>
+                  今年の出勤: {yearlyAttendance} 回, {isNaN(yearlyTotalTime) ? 0 : Math.floor(yearlyTotalTime)} 時間
+                </Text>
+              </Box>
+            </Box>
           </ModalBody>
-          <Flex justify="center" pb={4}>
-            <Button colorScheme="blue" mr={3} onClick={() => handleAttendance('出勤')}>
+            <Flex justify="center" pb={4} width="86%" margin="auto">
+            <Button colorScheme="blue" mr={3} onClick={() => handleAttendance('出勤')} width="50%">
               出勤
             </Button>
-            <Button colorScheme="red" onClick={() => handleAttendance('退勤')}>
+            <Button colorScheme="red" onClick={() => handleAttendance('退勤')} width="50%">
               退勤
             </Button>
-          </Flex>
+            </Flex>
         </ModalContent>
       </Modal>
     </Box>
