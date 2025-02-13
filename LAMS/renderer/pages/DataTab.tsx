@@ -66,42 +66,48 @@ const DataTab: React.FC = () => {
 
       setStudents(groupedStudents);
 
-      // 年間の出勤時間が最も長い学生を初期選択する関数
-      const selectStudentWithMostWorkTime = async (students: { [grade: string]: Student[] }) => {
-        let maxWorkTime = 0;
-        let studentIdWithMaxWorkTime = '';
+      // ローカルストレージから選択された学生IDを取得
+      const storedStudentId = localStorage.getItem('selectedStudentId');
 
-        for (const grade in students) {
-          for (const student of students[grade]) {
-            // 出勤データを取得
-            const { data: attendanceData, error: attendanceError } = await supabaseClient
-              .from('attendance')
-              .select('*')
-              .eq('student_id', student.id)
-              .order('timestamp', { ascending: true });
+      if (storedStudentId) {
+        setSelectedStudentId(storedStudentId);
+      } else {
+        // 年間の出勤時間が最も長い学生を初期選択する関数
+        const selectStudentWithMostWorkTime = async (students: { [grade: string]: Student[] }) => {
+          let maxWorkTime = 0;
+          let studentIdWithMaxWorkTime = '';
 
-            if (attendanceError) {
-              console.error('Error fetching attendance data:', attendanceError);
-              continue;
-            }
+          for (const grade in students) {
+            for (const student of students[grade]) {
+              // 出勤データを取得
+              const { data: attendanceData, error: attendanceError } = await supabaseClient
+                .from('attendance')
+                .select('*')
+                .eq('student_id', student.id)
+                .order('timestamp', { ascending: true });
 
-            // 年間の出勤時間を計算
-            const yearlyData = processAttendanceData(attendanceData || [], 'yearly');
-            const totalWorkTime = yearlyData.reduce((sum, item) => sum + item.出勤時間, 0);
+              if (attendanceError) {
+                console.error('Error fetching attendance data:', attendanceError);
+                continue;
+              }
 
-            if (totalWorkTime > maxWorkTime) {
-              maxWorkTime = totalWorkTime;
-              studentIdWithMaxWorkTime = student.id;
+              // 年間の出勤時間を計算
+              const yearlyData = processAttendanceData(attendanceData || [], 'yearly');
+              const totalWorkTime = yearlyData.reduce((sum, item) => sum + item.出勤時間, 0);
+
+              if (totalWorkTime > maxWorkTime) {
+                maxWorkTime = totalWorkTime;
+                studentIdWithMaxWorkTime = student.id;
+              }
             }
           }
-        }
+          return studentIdWithMaxWorkTime;
+        };
 
-        return studentIdWithMaxWorkTime;
-      };
-
-      // 年間の出勤時間が最も長い学生を選択
-      const initialStudentId = await selectStudentWithMostWorkTime(groupedStudents);
-      setSelectedStudentId(initialStudentId);
+        // 年間の出勤時間が最も長い学生を選択
+        const initialStudentId = await selectStudentWithMostWorkTime(groupedStudents);
+        setSelectedStudentId(initialStudentId);
+      }
     };
 
     // 初回データ取得
@@ -155,6 +161,11 @@ const DataTab: React.FC = () => {
 
     // クリーンアップ関数
     return () => clearInterval(intervalId);
+  }, [selectedStudentId]);
+
+  useEffect(() => {
+    // selectedStudentIdが変更されたらローカルストレージに保存
+    localStorage.setItem('selectedStudentId', selectedStudentId);
   }, [selectedStudentId]);
 
   // 勤務時間を集計する共通関数
