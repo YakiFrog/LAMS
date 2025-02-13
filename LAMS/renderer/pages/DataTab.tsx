@@ -29,9 +29,7 @@ const DataTab: React.FC = () => {
   const [monthlyData, setMonthlyData] = useState<any[]>([]);
   const [yearlyData, setYearlyData] = useState<any[]>([]);
   const theme = useTheme();
-  const fontSize = '2xl'; // 文字サイズを調整するための変数（文字サイズは 'xs', 'sm', 'md', 'lg', 'xl', '2xl', '3xl', '4xl', '5xl', '6xl' のいずれか）
-  const fontSizePixel = theme.fontSizes[fontSize]; // fontSizeに対応するピクセル値を取得
-
+  const fontSize = '2xl';
   // ホバーされたデータポイントを追跡するための状態
   const [hoveredData, setHoveredData] = useState<any>(null);
 
@@ -54,10 +52,7 @@ const DataTab: React.FC = () => {
       // グレードごとに学生をグループ化
       const groupedStudents: { [grade: string]: Student[] } = { M2: [], M1: [], B4: [] };
       studentsData.forEach((student) => {
-        if (!groupedStudents[student.grade]) {
-          groupedStudents[student.grade] = [];
-        }
-        groupedStudents[student.grade].push({
+        groupedStudents[student.grade]?.push({
           id: student.id,
           name: student.name,
           grade: student.grade,
@@ -70,10 +65,6 @@ const DataTab: React.FC = () => {
       });
 
       setStudents(groupedStudents);
-      // 最初の学生を選択
-      // if (studentsData && studentsData.length > 0) {
-      //   setSelectedStudentId(studentsData[0].id);
-      // }
     };
 
     fetchData();
@@ -109,155 +100,103 @@ const DataTab: React.FC = () => {
     };
 
     fetchAttendanceData();
-  }, [selectedStudentId, students]);
+  }, [selectedStudentId]);
+
+  // 勤務時間を集計する共通関数
+  const processAttendanceData = (
+    attendanceData: AttendanceRecord[],
+    timeFrame: 'weekly' | 'monthly' | 'yearly'
+  ): any[] => {
+    const timeData: { [key: string]: { [key: number]: number } } = {};
+    const dayNames = ['月', '火', '水', '木', '金', '土', '日'];
+
+    attendanceData.forEach((record) => {
+      const date = new Date(record.timestamp);
+      let timeKey: string = '';
+      let timeValue: number = 0;
+
+      if (timeFrame === 'weekly') {
+        timeKey = `${date.getFullYear()}-W${getWeek(date)}`;
+        timeValue = (date.getDay() + 6) % 7;
+      } else if (timeFrame === 'monthly') {
+        timeKey = `${date.getFullYear()}-${date.getMonth() + 1}`;
+        timeValue = date.getDate();
+      } else if (timeFrame === 'yearly') {
+        timeKey = `${date.getFullYear()}`;
+        timeValue = date.getMonth() + 1;
+      }
+
+      if (!timeData[timeKey]) {
+        timeData[timeKey] = {};
+      }
+
+      if (!timeData[timeKey][timeValue]) {
+        timeData[timeKey][timeValue] = 0;
+      }
+    });
+
+    return Object.entries(timeData).flatMap(([timeKey, timeData]) => {
+      let lastCheckInTime: Date | null = null;
+      const workTime: { [key: number]: number } = {};
+      if (timeFrame === 'weekly') {
+        dayNames.forEach((_, i) => (workTime[i] = 0));
+      } else if (timeFrame === 'monthly') {
+        for (let i = 1; i <= 31; i++) {
+          workTime[i] = 0;
+        }
+      } else if (timeFrame === 'yearly') {
+        for (let i = 1; i <= 12; i++) {
+          workTime[i] = 0;
+        }
+      }
+
+      attendanceData.forEach((record) => {
+        const recordDate = new Date(record.timestamp);
+        let recordTimeKey: string = '';
+        let recordTimeValue: number = 0;
+
+        if (timeFrame === 'weekly') {
+          recordTimeKey = `${recordDate.getFullYear()}-W${getWeek(recordDate)}`;
+          recordTimeValue = (recordDate.getDay() + 6) % 7;
+        } else if (timeFrame === 'monthly') {
+          recordTimeKey = `${recordDate.getFullYear()}-${recordDate.getMonth() + 1}`;
+          recordTimeValue = recordDate.getDate();
+        } else if (timeFrame === 'yearly') {
+          recordTimeKey = `${recordDate.getFullYear()}`;
+          recordTimeValue = recordDate.getMonth() + 1;
+        }
+
+        if (timeKey === recordTimeKey) {
+          if (record.status === '出勤') {
+            lastCheckInTime = recordDate;
+          } else if (record.status === '退勤' && lastCheckInTime) {
+            const timeDiff = recordDate.getTime() - lastCheckInTime.getTime();
+            workTime[recordTimeValue] += timeDiff / (60 * 60 * 1000); // Convert milliseconds to hours
+            lastCheckInTime = null;
+          }
+        }
+      });
+
+      if (timeFrame === 'weekly') {
+        return Object.entries(workTime).map(([dayIndex, 出勤時間]) => ({
+          day: dayNames[Number(dayIndex)],
+          出勤時間: Number(出勤時間),
+        }));
+      } else {
+        return Object.entries(workTime).map(([timeValue, 出勤時間]) => ({
+          day: timeValue,
+          month: timeValue,
+          出勤時間: Number(出勤時間),
+        }));
+      }
+    });
+  };
 
   useEffect(() => {
-    // Process weekly data
-    const processWeeklyData = () => {
-      const weekly: { [week: string]: { [day: string]: number } } = {};
-      const dayNames = ['月', '火', '水', '木', '金', '土', '日'];
-
-      attendanceData.forEach((record) => {
-        const date = new Date(record.timestamp);
-        const week = `${date.getFullYear()}-W${getWeek(date)}`;
-        const dayIndex = (date.getDay() + 6) % 7; // 月曜日を0とする
-        const day = dayNames[dayIndex];
-
-        if (!weekly[week]) {
-          weekly[week] = {};
-        }
-
-        if (!weekly[week][day]) {
-          weekly[week][day] = 0;
-        }
-      });
-
-      const weeklyArray = Object.entries(weekly).flatMap(([week, weekData]) => {
-        let lastCheckInTime: Date | null = null;
-        const dayWorkTime: { [day: string]: number } = {};
-        dayNames.forEach(day => dayWorkTime[day] = 0);
-
-        attendanceData.forEach((record) => {
-          const recordDate = new Date(record.timestamp);
-          const recordWeek = `${recordDate.getFullYear()}-W${getWeek(recordDate)}`;
-          const recordDayIndex = (recordDate.getDay() + 6) % 7; // 月曜日を0とする
-          const recordDay = dayNames[recordDayIndex];
-
-          if (week === recordWeek) {
-            if (record.status === '出勤') {
-              lastCheckInTime = recordDate;
-            } else if (record.status === '退勤' && lastCheckInTime) {
-              const timeDiff = recordDate.getTime() - lastCheckInTime.getTime();
-              dayWorkTime[recordDay] += timeDiff / (60 * 60 * 1000); // Convert milliseconds to hours
-              lastCheckInTime = null;
-            }
-          }
-        });
-
-        return Object.entries(dayWorkTime).map(([day, 出勤時間]) => ({ day, 出勤時間 }));
-      });
-
-      setWeeklyData(weeklyArray);
-    };
-
-    // Process monthly data
-    const processMonthlyData = () => {
-      const monthly: { [month: string]: { [day: number]: number } } = {};
-
-      attendanceData.forEach((record) => {
-        const date = new Date(record.timestamp);
-        const month = `${date.getFullYear()}-${date.getMonth() + 1}`;
-        const day = date.getDate();
-
-        if (!monthly[month]) {
-          monthly[month] = {};
-        }
-
-        if (!monthly[month][day]) {
-          monthly[month][day] = 0;
-        }
-      });
-
-      const monthlyArray = Object.entries(monthly).flatMap(([month, monthData]) => {
-        let lastCheckInTime: Date | null = null;
-        const dayWorkTime: { [day: number]: number } = {};
-        for (let i = 1; i <= 31; i++) {
-          dayWorkTime[i] = 0;
-        }
-
-        attendanceData.forEach((record) => {
-          const recordDate = new Date(record.timestamp);
-          const recordMonth = `${recordDate.getFullYear()}-${recordDate.getMonth() + 1}`;
-          const recordDay = recordDate.getDate();
-
-          if (month === recordMonth) {
-            if (record.status === '出勤') {
-              lastCheckInTime = recordDate;
-            } else if (record.status === '退勤' && lastCheckInTime) {
-              const timeDiff = recordDate.getTime() - lastCheckInTime.getTime();
-              dayWorkTime[recordDay] += timeDiff / (60 * 60 * 1000); // Convert milliseconds to hours
-              lastCheckInTime = null;
-            }
-          }
-        });
-
-        return Object.entries(dayWorkTime).map(([day, 出勤時間]) => ({ day, 出勤時間: Number(出勤時間) }));
-      });
-
-      setMonthlyData(monthlyArray);
-    };
-
-    // Process yearly data
-    const processYearlyData = () => {
-      const yearly: { [year: string]: { [month: number]: number } } = {};
-
-      attendanceData.forEach((record) => {
-        const date = new Date(record.timestamp);
-        const year = `${date.getFullYear()}`;
-        const month = date.getMonth() + 1;
-
-        if (!yearly[year]) {
-          yearly[year] = {};
-        }
-
-        if (!yearly[year][month]) {
-          yearly[year][month] = 0;
-        }
-      });
-
-      const yearlyArray = Object.entries(yearly).flatMap(([year, yearData]) => {
-        let lastCheckInTime: Date | null = null;
-        const monthWorkTime: { [month: number]: number } = {};
-        for (let i = 1; i <= 12; i++) {
-          monthWorkTime[i] = 0;
-        }
-
-        attendanceData.forEach((record) => {
-          const recordDate = new Date(record.timestamp);
-          const recordYear = `${recordDate.getFullYear()}`;
-          const recordMonth = recordDate.getMonth() + 1;
-
-          if (year === recordYear) {
-            if (record.status === '出勤') {
-              lastCheckInTime = recordDate;
-            } else if (record.status === '退勤' && lastCheckInTime) {
-              const timeDiff = recordDate.getTime() - lastCheckInTime.getTime();
-              monthWorkTime[recordMonth] += timeDiff / (60 * 60 * 1000); // Convert milliseconds to hours
-              lastCheckInTime = null;
-            }
-          }
-        });
-
-        return Object.entries(monthWorkTime).map(([month, 出勤時間]) => ({ month, 出勤時間: Number(出勤時間) }));
-      });
-
-      setYearlyData(yearlyArray);
-    };
-
     if (attendanceData.length > 0) {
-      processWeeklyData();
-      processMonthlyData();
-      processYearlyData();
+      setWeeklyData(processAttendanceData(attendanceData, 'weekly'));
+      setMonthlyData(processAttendanceData(attendanceData, 'monthly'));
+      setYearlyData(processAttendanceData(attendanceData, 'yearly'));
     } else {
       setWeeklyData([]);
       setMonthlyData([]);
@@ -304,6 +243,41 @@ const DataTab: React.FC = () => {
     });
   };
 
+  const renderChart = (data: any[], dataKey: string, chartType: 'weekly' | 'monthly' | 'yearly', height: number, xAxisDataKey: string) => (
+    <Box>
+      <Heading as="h3" size="md" mb={3}>
+        {chartType === 'weekly' ? '週ごとの出勤時間' : chartType === 'monthly' ? '月ごとの出勤時間' : '年ごとの出勤時間'}
+      </Heading>
+      <ResponsiveContainer width="100%" height={height}>
+        <BarChart
+          data={data.length > 0 ? data : []}
+          onMouseMove={(event) => {
+            if (event && event.activePayload && event.activePayload[0]) {
+              setHoveredData({ type: chartType, data: event.activePayload[0].payload });
+            } else {
+              setHoveredData(null);
+            }
+          }}
+          onMouseLeave={() => setHoveredData(null)}
+        >
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis dataKey={xAxisDataKey} />
+          <YAxis tickFormatter={(value: number) => {
+            if (value >= 1) {
+              return `${value.toFixed(0)} 時間`;
+            } else if (value * 60 >= 1) {
+              return `${(value * 60).toFixed(0)} 分`;
+            } else {
+              return `${(value * 60 * 60).toFixed(0)} 秒`;
+            }
+          }} />
+          <Tooltip content={<CustomTooltip payload={hoveredData?.type === chartType ? [hoveredData.data] : []} />} />
+          <Bar dataKey={dataKey} fill="#28a745" barSize={15} />
+        </BarChart>
+      </ResponsiveContainer>
+    </Box>
+  );
+
   return (
     <Box textAlign="left" p={0} height="100%">
       <Grid templateColumns="3fr 2.56fr" gap={5} height="100%">
@@ -311,112 +285,17 @@ const DataTab: React.FC = () => {
           <Flex direction="column" height="100%">
             {selectedStudentId && (
               <Box>
-                <Heading as="h3" size="md" mb={3}>
-                  週ごとの出勤時間
-                </Heading>
-                <ResponsiveContainer width="100%" height={250}>
-                  <BarChart data={weeklyData.length > 0 ? weeklyData : []}
-                    onMouseMove={(event) => {
-                      if (event && event.activePayload && event.activePayload[0]) {
-                        setHoveredData({ type: 'weekly', data: event.activePayload[0].payload });
-                      } else {
-                        setHoveredData(null);
-                      }
-                    }}
-                    onMouseLeave={() => setHoveredData(null)}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="day" />
-                    <YAxis tickFormatter={(value: number) => {
-                      if (value >= 1) {
-                        return `${value.toFixed(0)} 時間`;
-                      } else if (value * 60 >= 1) {
-                        return `${(value * 60).toFixed(0)} 分`;
-                      } else {
-                        return `${(value * 60 * 60).toFixed(0)} 秒`;
-                      }
-                    }} />
-                    <Tooltip
-                      content={<CustomTooltip type="weekly" payload={hoveredData?.type === 'weekly' ? [hoveredData.data] : []} />}
-                    />
-                    {/* <Legend /> */}
-                    <Bar dataKey="出勤時間" fill="#28a745" barSize={15} />
-                  </BarChart>
-                </ResponsiveContainer>
-
-                <Heading as="h3" size="md" mb={3} mt={2}>
-                  月ごとの出勤時間
-                </Heading>
-                <ResponsiveContainer width="100%" height={150}>
-                  <BarChart data={monthlyData.length > 0 ? monthlyData : []}
-                    onMouseMove={(event) => {
-                      if (event && event.activePayload && event.activePayload[0]) {
-                        setHoveredData({ type: 'monthly', data: event.activePayload[0].payload });
-                      } else {
-                        setHoveredData(null);
-                      }
-                    }}
-                    onMouseLeave={() => setHoveredData(null)}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="day" />
-                    <YAxis tickFormatter={(value: number) => {
-                      if (value >= 1) {
-                        return `${value.toFixed(0)} 時間`;
-                      } else if (value * 60 >= 1) {
-                        return `${(value * 60).toFixed(0)} 分`;
-                      } else {
-                        return `${(value * 60 * 60).toFixed(0)} 秒`;
-                      }
-                    }} />
-                    <Tooltip
-                      content={<CustomTooltip type="monthly" payload={hoveredData?.type === 'monthly' ? [hoveredData.data] : []} />}
-                    />
-                    {/* <Legend /> */}
-                    <Bar dataKey="出勤時間" fill="#28a745" barSize={15} />
-                  </BarChart>
-                </ResponsiveContainer>
-
-                <Heading as="h3" size="md" mb={3} mt={2}>
-                  年ごとの出勤時間
-                </Heading>
-                <ResponsiveContainer width="100%" height={150}>
-                  <BarChart data={yearlyData.length > 0 ? yearlyData : []}
-                    onMouseMove={(event) => {
-                      if (event && event.activePayload && event.activePayload[0]) {
-                        setHoveredData({ type: 'yearly', data: event.activePayload[0].payload });
-                      } else {
-                        setHoveredData(null);
-                      }
-                    }}
-                    onMouseLeave={() => setHoveredData(null)}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" />
-                    <YAxis tickFormatter={(value: number) => {
-                      if (value >= 1) {
-                        return `${value.toFixed(0)} 時間`;
-                      } else if (value * 60 >= 1) {
-                        return `${(value * 60).toFixed(0)} 分`;
-                      } else {
-                        return `${(value * 60 * 60).toFixed(0)} 秒`;
-                      }
-                    }} />
-                    <Tooltip
-                      content={<CustomTooltip type="yearly" payload={hoveredData?.type === 'yearly' ? [hoveredData.data] : []} />}
-                    />
-                    {/* <Legend /> */}
-                    <Bar dataKey="出勤時間" fill="#28a745" barSize={15} />
-                  </BarChart>
-                </ResponsiveContainer>
+                {renderChart(weeklyData, '出勤時間', 'weekly', 250, 'day')}
+                {renderChart(monthlyData, '出勤時間', 'monthly', 150, 'day')}
+                {renderChart(yearlyData, '出勤時間', 'yearly', 150, 'month')}
               </Box>
             )}
           </Flex>
         </GridItem>
 
         <GridItem height="100%">
-          <Box 
-            bg="white" 
+          <Box
+            bg="white"
             zIndex={1}
             overflowY="auto"
             maxHeight="80vh" // 画面の高さに合わせて調整
@@ -465,22 +344,13 @@ const DataTab: React.FC = () => {
 };
 
 // カスタムTooltipコンポーネント
-const CustomTooltip: React.FC<{ type: string; payload: any[] }> = ({ type, payload }) => {
+const CustomTooltip: React.FC<{ payload: any[] }> = ({ payload }) => {
   if (payload && payload.length > 0) {
     const data = payload[0].payload;
-    let label = '';
-    let value = '';
-
-    if (type === 'weekly') {
-      label = `曜日: ${data.day}`;
-      value = `出勤時間: ${data.出勤時間.toFixed(2)} 時間`;
-    } else if (type === 'monthly') {
-      label = `日: ${data.day}`;
-      value = `出勤時間: ${data.出勤時間.toFixed(2)} 時間`;
-    } else if (type === 'yearly') {
-      label = `月: ${data.month}`;
-      value = `出勤時間: ${data.出勤時間.toFixed(2)} 時間`;
-    }
+    let labelKey = Object.keys(data).find(key => key === 'day' || key === 'month');
+    let labelPrefix = labelKey === 'day' ? '日' : '月';
+    let label = `${labelPrefix}: ${data[labelKey! as keyof typeof data]}`;
+    let value = `出勤時間: ${data.出勤時間.toFixed(2)} 時間`;
 
     return (
       <Box bg="white" border="1px solid #ccc" p={2}>
