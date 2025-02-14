@@ -414,6 +414,18 @@ const MainTab: React.FC = () => {
   const handleAttendance = async (status: '出勤' | '退勤') => {
     if (!selectedStudentId) return;
 
+    // 出勤ボタンが押された場合、既に出勤状態であれば処理を中断
+    if (status === '出勤' && attendanceStatus[selectedStudentId]?.status === '出勤') {
+      toast({
+        title: '既に出勤済みです',
+        description: '既に出勤として記録されています。',
+        status: 'warning',
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
+
     if (status === '退勤' && attendanceStatus[selectedStudentId]?.status !== '出勤') {
       toast({
         title: '退勤を記録できません',
@@ -819,15 +831,14 @@ const MainTab: React.FC = () => {
             </Box>
           </ModalBody>
           <Flex justify="center" pb={4} width="86%" margin="auto" pt={4}>
-            <Button colorScheme="blue" mr={3} onClick={() => {
-              handleAttendance('出勤');
-            }} width="50%">
-              出勤
-            </Button>
-            <Button colorScheme="red" onClick={() => {
-              handleAttendance('退勤');
-            }} width="50%">
-              退勤
+            <Button
+              colorScheme={attendanceStatus[selectedStudentId]?.status === '出勤' ? 'red' : 'blue'}
+              onClick={() => {
+                handleAttendance(attendanceStatus[selectedStudentId]?.status === '出勤' ? '退勤' : '出勤');
+              }}
+              width="100%"
+            >
+              {attendanceStatus[selectedStudentId]?.status === '出勤' ? '退勤' : '出勤'}
             </Button>
           </Flex>
         </ModalContent>
