@@ -18,7 +18,7 @@ function MyApp({ Component, pageProps }: AppProps) {
   return (
     <ChakraProvider theme={theme}>
       <Box p={4}>
-        <Heading mb={4}>LAMS</Heading>
+        <Heading mb={4}>LAMS made by Kotani</Heading>
         <Tabs isFitted variant="enclosed">
           <TabList mb={4}>
             <Tab>Home</Tab>
