@@ -474,48 +474,84 @@ const MainTab: React.FC = () => {
 
   useEffect(() => {
     const checkAndUpdateAttendance = async () => {
+      if (Object.keys(attendanceStatus).length === 0) {
+        return;
+      }
+
       const currentTime = new Date();
-      const hours = currentTime.getHours();
-      const minutes = currentTime.getMinutes();
+      const currentHour = currentTime.getHours();
+      const currentMinutes = currentTime.getMinutes();
 
-      if (hours === 22 && minutes === 30) {
+      // 22:30から24:00の間の場合のみ処理を実行
+      if ((currentHour === 22 && currentMinutes >= 30) || currentHour === 23) {
         const supabaseClient = useSupabaseClient();
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        let updated = false;
 
+        // 各学生のデータをチェック
         for (const studentId in attendanceStatus) {
-          if (attendanceStatus[studentId]?.status === '出勤') {
-            await supabaseClient
-              .from('attendance')
-              .insert([
-                {
+          const { data, error } = await supabaseClient
+            .from('attendance')
+            .select('*')
+            .eq('student_id', studentId)
+            .gte('timestamp', today.toISOString())
+            .order('timestamp', { ascending: false });
+
+          if (error) {
+            console.error('Error fetching attendance:', error);
+            continue;
+          }
+
+          // その日の最後の記録が出勤で、22:30より前の場合
+          if (data && data.length > 0 && 
+              data[0].status === '出勤' && 
+              new Date(data[0].timestamp) < new Date(today.setHours(22, 30, 0))) {
+            try {
+              // 退勤時刻を22:30に設定
+              const checkoutTime = new Date(today);
+              checkoutTime.setHours(22, 30, 0, 0);
+              
+              // 退勤処理を実行
+              await supabaseClient
+                .from('attendance')
+                .insert([{
                   student_id: studentId,
                   status: '退勤',
-                  timestamp: new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' }) // 修正: 東京ローカル時間を文字列として記録
-                },
-              ]);
+                  timestamp: checkoutTime.toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })
+                }]);
 
-            setAttendanceStatus((prevStatus) => ({
-              ...prevStatus,
-              [studentId]: { status: '退勤', timestamp: new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' }) } // 修正: 東京ローカル時間を文字列として記録
-            }));
+              // attendanceStatusを更新
+              setAttendanceStatus(prev => ({
+                ...prev,
+                [studentId]: {
+                  status: '退勤',
+                  timestamp: checkoutTime.toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })
+                }
+              }));
+
+              updated = true;
+            } catch (error) {
+              console.error('Auto checkout error:', error);
+            }
           }
+        }
+
+        if (updated) {
+          setStudents(prev => ({ ...prev }));
         }
       }
     };
 
-    const resetAttendanceStatus = () => {
-      const currentTime = new Date();
-      if (currentTime.getHours() === 0 && currentTime.getMinutes() === 0) {
-        setAttendanceStatus({});
-      }
-    };
-
-    const intervalId = setInterval(() => {
-      checkAndUpdateAttendance();
-      resetAttendanceStatus();
-    }, 60000);
+    // 1分ごとにチェック
+    const intervalId = setInterval(checkAndUpdateAttendance, 60000);
+    
+    // 初回実行
+    checkAndUpdateAttendance();
 
     return () => clearInterval(intervalId);
-  }, [attendanceStatus]);
+  }, [attendanceStatus, students]);
 
   // 10秒ごとのデータ更新を実装
   useEffect(() => {
