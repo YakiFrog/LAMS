@@ -1,8 +1,3 @@
-<p align="center">
-<img src="https://i.imgur.com/oahHuxG.png">
-<img src="https://i.imgur.com/sZ01Nyl.png">
-</p>
-
 ## Usage
 
 ### Create an App
