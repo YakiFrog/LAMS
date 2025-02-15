@@ -114,7 +114,8 @@ const REFRESH_INTERVAL = {
 // タイムスタンプを修正する関数を追加
 const fixAttendanceTimestamp = (timestamp: string): string => {
   const date = new Date(timestamp);
-  return date.toISOString();
+  const jpTime = new Date(date.getTime() + (9 * 60 * 60 * 1000));
+  return jpTime.toISOString();
 };
 
 const MainTab: React.FC = () => {
@@ -365,12 +366,11 @@ const MainTab: React.FC = () => {
       const recordDate = new Date(record.timestamp);
       const recordDateStr = recordDate.toLocaleDateString('ja-JP');
       if (recordDateStr === todayStr) {
-        // 日本時間で表示
-        const localTime = new Date(record.timestamp);
+        const localTime = new Date(new Date(record.timestamp).getTime() - (9 * 60 * 60 * 1000));
+        // タイムスタンプをそのまま使用（既にJST）
         const timeStr = localTime.toLocaleTimeString('ja-JP', {
           hour: '2-digit',
-          minute: '2-digit',
-          timeZone: 'Asia/Tokyo'
+          minute: '2-digit'
         });
         if (record.status === '出勤' && !checkIn) {
           checkIn = timeStr;
@@ -427,7 +427,6 @@ const MainTab: React.FC = () => {
   const handleAttendance = async (status: '出勤' | '退勤') => {
     if (!selectedStudentId) return;
 
-    // 出勤ボタンが押された場合、既に出勤状態であれば処理を中断
     if (status === '出勤' && attendanceStatus[selectedStudentId]?.status === '出勤') {
       toast({
         title: '既に出勤済みです',
@@ -452,9 +451,12 @@ const MainTab: React.FC = () => {
 
     try {
       const supabase = useSupabaseClient();
+      
+      // 現在時刻を取得し、JSTに調整
       const now = new Date();
-      // タイムスタンプをISO形式で保存
-      const timestamp = now.toISOString();
+      const jstTime = new Date(now.getTime() + (9 * 60 * 60 * 1000));
+      const timestamp = jstTime.toISOString();
+
       const { error } = await supabase
         .from('attendance')
         .insert([{
@@ -530,9 +532,10 @@ const MainTab: React.FC = () => {
               data[0].status === '出勤' && 
               new Date(data[0].timestamp) < new Date(today.setHours(22, 30, 0))) {
             try {
-              // 退勤時刻を22:30に設定
-              const checkoutTime = new Date(today);
+              // 退勤時刻を22:30に設定（日本時間）
+              const checkoutTime = new Date();
               checkoutTime.setHours(22, 30, 0, 0);
+              const jpCheckoutTime = new Date(checkoutTime.getTime() + (9 * 60 * 60 * 1000));
               
               // 退勤処理を実行
               await supabaseClient
@@ -540,7 +543,7 @@ const MainTab: React.FC = () => {
                 .insert([{
                   student_id: studentId,
                   status: '退勤',
-                  timestamp: checkoutTime.toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })
+                  timestamp: jpCheckoutTime.toISOString()
                 }]);
 
               // attendanceStatusを更新
@@ -548,7 +551,7 @@ const MainTab: React.FC = () => {
                 ...prev,
                 [studentId]: {
                   status: '退勤',
-                  timestamp: checkoutTime.toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })
+                  timestamp: jpCheckoutTime.toISOString()
                 }
               }));
 
