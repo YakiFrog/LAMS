@@ -52,8 +52,8 @@ const Home: React.FC = () => {
   };
 
   const squareStyle = {
-    width: 'min(97vw, 97vh)', // viewportの幅と高さの小さい方の90%を採用
-    height: 'min(97vw, 97vh)',
+    width: 'min(97vw, calc(97vh * 4 / 3))', // viewportの幅と高さの小さい方の90%を採用
+    height: 'min(97vw * 3 / 4, 97vh)',
     border: '1px solid black',
     boxSizing: 'border-box' as 'border-box', // padding, borderをwidth, heightに含める
     display: 'flex',

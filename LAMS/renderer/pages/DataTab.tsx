@@ -174,56 +174,67 @@ const DataTab: React.FC = () => {
     timeFrame: 'weekly' | 'monthly' | 'yearly'
   ): any[] => {
     const timeData: { [key: string]: { checkIn: Date | null, workTime: { [key: number]: number } } } = {};
+    // 月曜日始まりの曜日配列
     const dayNames = ['月', '火', '水', '木', '金', '土', '日'];
 
     attendanceData.forEach((record) => {
       const date = new Date(record.timestamp);
+      // 日本時間に変換
+      const jpDate = new Date(date.toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
       let timeKey: string = '';
       let timeValue: number = 0;
 
       if (timeFrame === 'weekly') {
-        timeKey = `${date.getFullYear()}-W${getWeek(date)}`;
-        timeValue = (date.getDay() + 6) % 7;
+        timeKey = `${jpDate.getFullYear()}-W${getWeek(jpDate)}`;
+        // 日曜日(0)を7に変換し、他は1を引いて月曜日始まりに調整
+        timeValue = jpDate.getDay() === 0 ? 6 : jpDate.getDay() - 1;
       } else if (timeFrame === 'monthly') {
-        timeKey = `${date.getFullYear()}-${date.getMonth() + 1}`;
-        timeValue = date.getDate();
+        timeKey = `${jpDate.getFullYear()}-${jpDate.getMonth() + 1}`;
+        timeValue = jpDate.getDate();
       } else if (timeFrame === 'yearly') {
-        timeKey = `${date.getFullYear()}`;
-        timeValue = date.getMonth() + 1;
+        timeKey = `${jpDate.getFullYear()}`;
+        timeValue = jpDate.getMonth() + 1;
       }
 
       if (!timeData[timeKey]) {
         timeData[timeKey] = { checkIn: null, workTime: {} };
         if (timeFrame === 'weekly') {
           dayNames.forEach((_, i) => (timeData[timeKey].workTime[i] = 0));
-        } else if (timeFrame === 'monthly') {
-          for (let i = 1; i <= 31; i++) {
-            timeData[timeKey].workTime[i] = 0;
-          }
-        } else if (timeFrame === 'yearly') {
-          for (let i = 1; i <= 12; i++) {
-            timeData[timeKey].workTime[i] = 0;
+        } else {
+          // monthly と yearly の処理は変更なし
+          if (timeFrame === 'monthly') {
+            for (let i = 1; i <= 31; i++) {
+              timeData[timeKey].workTime[i] = 0;
+            }
+          } else if (timeFrame === 'yearly') {
+            for (let i = 1; i <= 12; i++) {
+              timeData[timeKey].workTime[i] = 0;
+            }
           }
         }
       }
 
+      // 出退勤処理
       if (record.status === '出勤') {
-        timeData[timeKey].checkIn = date;
+        timeData[timeKey].checkIn = jpDate;
       } else if (record.status === '退勤' && timeData[timeKey].checkIn) {
-        const timeDiff = date.getTime() - timeData[timeKey].checkIn!.getTime();
-        timeData[timeKey].workTime[timeValue] += timeDiff / (60 * 60 * 1000); // Convert milliseconds to hours
+        const timeDiff = jpDate.getTime() - timeData[timeKey].checkIn!.getTime();
+        timeData[timeKey].workTime[timeValue] += timeDiff / (60 * 60 * 1000);
         timeData[timeKey].checkIn = null;
       }
     });
 
+    // データの整形
     return Object.entries(timeData).flatMap(([timeKey, data]) => {
       const workTime = data.workTime;
       if (timeFrame === 'weekly') {
+        // 月曜日始まりの順序で表示
         return Object.entries(workTime).map(([dayIndex, 出勤時間]) => ({
           day: dayNames[Number(dayIndex)],
           出勤時間: Number(出勤時間),
         }));
       } else {
+        // monthly と yearly の処理は変更なし
         return Object.entries(workTime).map(([timeValue, 出勤時間]) => ({
           day: timeValue,
           month: timeValue,
@@ -248,10 +259,9 @@ const DataTab: React.FC = () => {
   // Function to get the week number
   const getWeek = (date: Date) => {
     const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-    let dayNum = d.getUTCDay(); // 0 (日) から 6 (土)
-    dayNum = (dayNum + 6) % 7; // 月曜日を0とする (0: 月, 1: 火, ..., 6: 日)
-    d.setUTCDate(d.getUTCDate() + 3 - dayNum);
-    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 4));
+    const dayNum = d.getUTCDay();
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
     return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
   };
 

@@ -66,9 +66,13 @@ const useAttendanceData = (studentId: string | null) => {
 
         const attendedDaysSet = new Set<number>();
         data.forEach(record => {
+          // 日本時間での曜日を取得
           const date = new Date(record.timestamp);
-          attendedDaysSet.add(date.getDay());
+          const jpDate = new Date(date.toLocaleString('en-US', { timeZone: 'Asia/Tokyo' }));
+          const dayOfWeek = jpDate.getDay();
+          attendedDaysSet.add(dayOfWeek);
         });
+
         const attendedDays = Array.from(attendedDaysSet);
 
         let totalHours = 0;
@@ -105,6 +109,12 @@ const REFRESH_INTERVAL = {
   ATTENDANCE_STATUS: 3000,  // 出退勤状態: 3秒
   STATISTICS: 10000,        // 統計データ: 10秒
   STUDENT_LIST: 30000      // 学生一覧: 30秒
+};
+
+// タイムスタンプを修正する関数を追加
+const fixAttendanceTimestamp = (timestamp: string): string => {
+  const date = new Date(timestamp);
+  return date.toISOString();
 };
 
 const MainTab: React.FC = () => {
@@ -225,11 +235,12 @@ const MainTab: React.FC = () => {
   const fetchAttendanceData = async (studentId: string) => {
     const supabaseClient = useSupabaseClient();
 
+    // 日本時間で週初めを設定
     const startOfWeek = new Date();
+    startOfWeek.setHours(0, 0, 0, 0);
     const dayOfWeek = startOfWeek.getDay();
     const mondayOffset = (dayOfWeek === 0 ? 6 : dayOfWeek - 1);
     startOfWeek.setDate(startOfWeek.getDate() - mondayOffset);
-    startOfWeek.setHours(0, 0, 0, 0);
 
     const { data: weeklyData, error: weeklyError } = await supabaseClient
       .from('attendance')
@@ -349,21 +360,23 @@ const MainTab: React.FC = () => {
     let checkOut = null;
 
     // 同じ日のデータのみを処理
-    const todayStr = new Date().toLocaleDateString('ja-JP');
+    const todayStr = today.toLocaleDateString('ja-JP');
     data.forEach(record => {
-      const recordDate = new Date(record.timestamp).toLocaleDateString('ja-JP');
-      if (recordDate === todayStr) {
-        const timestamp = new Date(record.timestamp);
-        timestamp.setHours(timestamp.getHours() - 9);
-        const localizedTime = timestamp.toLocaleTimeString('ja-JP', {
+      const recordDate = new Date(record.timestamp);
+      const recordDateStr = recordDate.toLocaleDateString('ja-JP');
+      if (recordDateStr === todayStr) {
+        // 日本時間で表示
+        const localTime = new Date(record.timestamp);
+        const timeStr = localTime.toLocaleTimeString('ja-JP', {
           hour: '2-digit',
           minute: '2-digit',
+          timeZone: 'Asia/Tokyo'
         });
         if (record.status === '出勤' && !checkIn) {
-          checkIn = localizedTime;
+          checkIn = timeStr;
         }
         if (record.status === '退勤') {
-          checkOut = localizedTime;
+          checkOut = timeStr;
         }
       }
     });
@@ -440,7 +453,8 @@ const MainTab: React.FC = () => {
     try {
       const supabase = useSupabaseClient();
       const now = new Date();
-      const timestamp = now.toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' });
+      // タイムスタンプをISO形式で保存
+      const timestamp = now.toISOString();
       const { error } = await supabase
         .from('attendance')
         .insert([{
@@ -451,16 +465,11 @@ const MainTab: React.FC = () => {
 
       if (error) throw error;
 
-      // 当日の日付を取得
-      const today = new Date().toLocaleDateString('ja-JP');
-
-      // 新しいattendanceStatusを更新
       setAttendanceStatus(prev => ({
         ...prev,
         [selectedStudentId]: { status, timestamp }
       }));
 
-      // 本日の出勤データを再取得
       fetchTodayAttendance(selectedStudentId);
 
       toast({
@@ -728,6 +737,40 @@ const MainTab: React.FC = () => {
     // クリーンアップ
     return () => clearInterval(intervalId);
   }, [selectedStudentId]);
+
+  // 起動時に既存データを修正するuseEffect
+  useEffect(() => {
+    const fixExistingAttendanceData = async () => {
+      const supabase = useSupabaseClient();
+      
+      // 全ての出退勤データを取得
+      const { data: attendanceData, error } = await supabase
+        .from('attendance')
+        .select('*');
+
+      if (error) {
+        console.error('Error fetching attendance data:', error);
+        return;
+      }
+
+      // データの修正
+      for (const record of attendanceData) {
+        const fixedTimestamp = fixAttendanceTimestamp(record.timestamp);
+        if (fixedTimestamp !== record.timestamp) {
+          const { error: updateError } = await supabase
+            .from('attendance')
+            .update({ timestamp: fixedTimestamp })
+            .eq('id', record.id);
+
+          if (updateError) {
+            console.error('Error updating timestamp:', updateError);
+          }
+        }
+      }
+    };
+
+    fixExistingAttendanceData();
+  }, []);
 
   return (
     <Box textAlign="left" pt={0} height="100%" overflowY="auto" maxHeight="90vh">
